@@ -1208,15 +1208,19 @@
   }
 
   .product-lead-image-wrap {
-    height: 190px !important;
+    height: 160px !important;
   }
 
   .product-lead-body {
-    padding: 16px !important;
+    padding: 14px !important;
+  }
+
+  .lead-features-list {
+    display: none !important;
   }
 
   .margin-calculator-box {
-    padding: 10px !important;
+    padding: 8px 10px !important;
     gap: 4px;
   }
 

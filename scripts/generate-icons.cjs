@@ -14,8 +14,7 @@ function renderIcon(size, fontSize, dotSize) {
         alignItems: 'center',
         justifyContent: 'center',
         background: 'linear-gradient(135deg, #1e1b4b 0%, #312e81 30%, #4338ca 70%, #0891b2 100%)',
-        borderRadius: `${Math.round(size * 0.24)}px`,
-        border: `${Math.max(2, Math.round(size * 0.025))}px solid rgba(255, 255, 255, 0.35)`,
+        borderRadius: `${Math.round(size * 0.22)}px`,
         position: 'relative',
       },
     },
@@ -30,7 +29,7 @@ function renderIcon(size, fontSize, dotSize) {
           fontSize: `${fontSize}px`,
           fontWeight: 900,
           fontFamily: 'sans-serif',
-          letterSpacing: '-2px',
+          letterSpacing: '-1px',
         },
       },
       'D'
@@ -38,46 +37,91 @@ function renderIcon(size, fontSize, dotSize) {
     React.createElement('div', {
       style: {
         position: 'absolute',
-        bottom: `${Math.round(size * 0.12)}px`,
-        right: `${Math.round(size * 0.12)}px`,
+        bottom: `${Math.max(2, Math.round(size * 0.1))}px`,
+        right: `${Math.max(2, Math.round(size * 0.1))}px`,
         width: `${dotSize}px`,
         height: `${dotSize}px`,
         borderRadius: '50%',
         backgroundColor: '#10b981',
-        border: `${Math.max(2, Math.round(size * 0.02))}px solid #ffffff`,
       },
     })
   );
 }
 
-async function generatePng(size, outputPath) {
+async function getPngBuffer(size) {
   const fontSize = Math.round(size * 0.58);
-  const dotSize = Math.round(size * 0.16);
-  const response = new ImageResponse(renderIcon(size, fontSize, dotSize), {
+  const dotSize = Math.max(3, Math.round(size * 0.18));
+  const res = new ImageResponse(renderIcon(size, fontSize, dotSize), {
     width: size,
     height: size,
   });
+  return Buffer.from(await res.arrayBuffer());
+}
 
-  const arrayBuffer = await response.arrayBuffer();
-  const buffer = Buffer.from(arrayBuffer);
-  fs.writeFileSync(outputPath, buffer);
-  console.log(`✅ Generated ${path.basename(outputPath)} (${size}x${size}, ${buffer.length} bytes)`);
+function packIco(images) {
+  // images: array of { size, buffer }
+  const count = images.length;
+  const headerLen = 6;
+  const entryLen = 16;
+  let offset = headerLen + (entryLen * count);
+  
+  const header = Buffer.alloc(headerLen);
+  header.writeUInt16LE(0, 0); // reserved
+  header.writeUInt16LE(1, 2); // 1 = ICO type
+  header.writeUInt16LE(count, 4); // count of images
+  
+  const entries = [];
+  for (const img of images) {
+    const entry = Buffer.alloc(entryLen);
+    entry.writeUInt8(img.size >= 256 ? 0 : img.size, 0); // width
+    entry.writeUInt8(img.size >= 256 ? 0 : img.size, 1); // height
+    entry.writeUInt8(0, 2); // color count
+    entry.writeUInt8(0, 3); // reserved
+    entry.writeUInt16LE(1, 4); // color planes
+    entry.writeUInt16LE(32, 6); // bits per pixel (32bpp)
+    entry.writeUInt32LE(img.buffer.length, 8); // image byte length
+    entry.writeUInt32LE(offset, 12); // byte offset from file start
+    entries.push(entry);
+    offset += img.buffer.length;
+  }
+  
+  return Buffer.concat([header, ...entries, ...images.map(img => img.buffer)]);
 }
 
 async function main() {
   const publicDir = path.resolve(__dirname, '../public');
   const appDir = path.resolve(__dirname, '../src/app');
 
-  await generatePng(192, path.join(publicDir, 'icon-192.png'));
-  await generatePng(512, path.join(publicDir, 'icon-512.png'));
-  await generatePng(180, path.join(publicDir, 'apple-touch-icon.png'));
-  await generatePng(32, path.join(publicDir, 'favicon-32x32.png'));
-  await generatePng(48, path.join(publicDir, 'favicon.ico'));
-  
-  // Replace the old 25KB favicon.ico in src/app with the new 48x48 icon!
-  await generatePng(48, path.join(appDir, 'favicon.ico'));
+  console.log('Generating PNG icons...');
+  const b16 = await getPngBuffer(16);
+  fs.writeFileSync(path.join(publicDir, 'favicon-16x16.png'), b16);
 
-  console.log('🎉 All website & PWA app icons successfully generated!');
+  const b32 = await getPngBuffer(32);
+  fs.writeFileSync(path.join(publicDir, 'favicon-32x32.png'), b32);
+
+  const b48 = await getPngBuffer(48);
+  fs.writeFileSync(path.join(publicDir, 'favicon-48x48.png'), b48);
+
+  const b180 = await getPngBuffer(180);
+  fs.writeFileSync(path.join(publicDir, 'apple-touch-icon.png'), b180);
+
+  const b192 = await getPngBuffer(192);
+  fs.writeFileSync(path.join(publicDir, 'icon-192.png'), b192);
+
+  const b512 = await getPngBuffer(512);
+  fs.writeFileSync(path.join(publicDir, 'icon-512.png'), b512);
+
+  console.log('Generating true multi-resolution Windows ICO (16x16, 32x32, 48x48)...');
+  const icoBuffer = packIco([
+    { size: 16, buffer: b16 },
+    { size: 32, buffer: b32 },
+    { size: 48, buffer: b48 },
+  ]);
+
+  fs.writeFileSync(path.join(publicDir, 'favicon.ico'), icoBuffer);
+  fs.writeFileSync(path.join(appDir, 'favicon.ico'), icoBuffer);
+
+  console.log('🎉 All icons and true multi-resolution favicon.ico generated successfully!');
 }
 
 main().catch(err => {
