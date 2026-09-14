@@ -4,7 +4,7 @@ import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 import { useAuth } from '@/context/AuthContext';
-import { ChevronDown, User, ShoppingBag, LogOut, Send, Shield, HelpCircle, Home, CreditCard as CardIcon, CheckCircle2 } from 'lucide-react';
+import { ChevronDown, User, ShoppingBag, LogOut, Send, Shield, HelpCircle, Home, CreditCard as CardIcon, CheckCircle2, FileSpreadsheet } from 'lucide-react';
 import './Navbar.css';
  
 export default function Navbar({ onOpenAuth }) {
@@ -81,10 +81,10 @@ export default function Navbar({ onOpenAuth }) {
         <div className="container navbar-content">
           {/* Logo */}
           <Link href="/" className="logo">
-            <div className="logo-icon">
-              <Shield size={18} fill="white" />
+            <div className="logo-icon" style={{ background: 'linear-gradient(135deg, #6366f1, #a855f7)' }}>
+              <ShoppingBag size={18} fill="white" />
             </div>
-            CardVault
+            Dropzen
           </Link>
  
           {/* Center Navigation Links */}
@@ -93,14 +93,21 @@ export default function Navbar({ onOpenAuth }) {
               Home
             </Link>
             <Link href="/marketplace" className={`nav-link ${pathname === '/marketplace' ? 'active' : ''}`}>
-              Marketplace
+              Products Hub
             </Link>
             <a
-              href="#verify-payment"
-              onClick={(e) => handleNavClick(e, 'verify-payment')}
+              href="#excel-preview"
+              onClick={(e) => handleNavClick(e, 'excel-preview')}
               className="nav-link"
             >
-              Verify Payment
+              Excel Preview
+            </a>
+            <a
+              href="#roi-calculator"
+              onClick={(e) => handleNavClick(e, 'roi-calculator')}
+              className="nav-link"
+            >
+              ROI Calculator
             </a>
           </div>
  
@@ -157,16 +164,16 @@ export default function Navbar({ onOpenAuth }) {
           href="/marketplace" 
           className={`bottom-tab-item ${pathname === '/marketplace' ? 'active' : ''}`}
         >
-          <CardIcon size={20} />
-          <span>Cards</span>
+          <ShoppingBag size={20} />
+          <span>Products</span>
         </Link>
         <a 
-          href="#verify-payment" 
-          onClick={(e) => handleNavClick(e, 'verify-payment')} 
+          href="#excel-preview" 
+          onClick={(e) => handleNavClick(e, 'excel-preview')} 
           className="bottom-tab-item"
         >
-          <CheckCircle2 size={20} />
-          <span>Verify</span>
+          <FileSpreadsheet size={20} />
+          <span>Preview</span>
         </a>
         {mounted && user ? (
           <Link href="/profile/orders" className={`bottom-tab-item ${pathname.startsWith('/profile') ? 'active' : ''}`}>

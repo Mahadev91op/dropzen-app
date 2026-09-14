@@ -79,10 +79,10 @@ export default function PaymentModal({
   };
 
   const effectiveUpiId = (upiId && typeof upiId === 'string' && upiId.trim()) ? upiId.trim() : 'mahadevtanti191@okaxis';
-  const inrAmount = card?.entryFee || 15;
-  const cardIdentifier = card?.name ? card.name.replace(/\s+/g, '_') : 'VCC';
+  const inrAmount = card?.price || card?.entryFee || 999;
+  const itemIdentifier = (card?.title || card?.name || 'Dropzen_Leads').replace(/\s+/g, '_');
   // Construct standard NPCI UPI intent link with exact locked amount
-  const upiParams = `pa=${encodeURIComponent(effectiveUpiId)}&pn=${encodeURIComponent("CardVault")}&am=${inrAmount}&cu=INR&tn=${encodeURIComponent(`Order_${cardIdentifier}_${refreshCount}`)}`;
+  const upiParams = `pa=${encodeURIComponent(effectiveUpiId)}&pn=${encodeURIComponent("Dropzen")}&am=${inrAmount}&cu=INR&tn=${encodeURIComponent(`Order_${itemIdentifier}_${refreshCount}`)}`;
   
   const upiLink = `upi://pay?${upiParams}`;
   const gpayLink = `gpay://upi/pay?${upiParams}`;
@@ -291,7 +291,12 @@ export default function PaymentModal({
         {/* Pricing breakdown & Timer */}
         <div className="payment-pricing-banner">
           <div className="price-details">
-            <span className="price-label">Entry Fee Due:</span>
+            <div style={{ fontWeight: 700, color: '#f8fafc', fontSize: '1rem', marginBottom: '4px' }}>
+              {card?.title || card?.name || 'Verified Dropshipping Leads'}
+            </div>
+            <div style={{ fontSize: '0.8rem', color: '#94a3b8', marginBottom: '4px' }}>
+              Includes: {card?.recordsCount ? `${card.recordsCount.toLocaleString()}+ Real Buyer Records` : 'Min 10 Verified Orders'} (Excel Delivery)
+            </div>
             <div className="price-value-stack">
               <span className="price-usd">₹{inrAmount} INR</span>
             </div>

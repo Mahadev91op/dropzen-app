@@ -1,5 +1,5 @@
 export default async function sitemap() {
-  const baseUrl = (process.env.NEXT_PUBLIC_APP_URL || process.env.APP_URL || 'https://cardvault.com').replace(/\/+$/, '');
+  const baseUrl = (process.env.NEXT_PUBLIC_APP_URL || process.env.APP_URL || 'https://dropzen.in').replace(/\/+$/, '');
 
   return [
     {

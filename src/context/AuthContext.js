@@ -83,14 +83,12 @@ export function AuthProvider({ children }) {
   }, []);
 
   useEffect(() => {
-    // Safely hydrate cached user on client mount without triggering hydration mismatch
+    // Purge obsolete CardVault card cache so old cards never appear
     try {
-      const saved = localStorage.getItem('cv_user');
-      if (saved) {
-        setUser(JSON.parse(saved));
-        setLoading(false);
-      }
+      sessionStorage.removeItem('cv_cards_cache');
+      localStorage.removeItem('cv_cards_cache');
     } catch (e) {}
+
     checkSession();
   }, [checkSession]);
 

@@ -2,7 +2,6 @@
 
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { useAuth } from '@/context/AuthContext';
-import CreditCard from '@/components/CreditCard';
 import {
   LayoutDashboard,
   ShoppingBag,
@@ -36,7 +35,11 @@ import {
   TrendingUp,
   ArrowUpRight,
   Layers,
-  Activity
+  Activity,
+  Bell,
+  Upload,
+  Camera,
+  Image as ImageIcon
 } from 'lucide-react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
@@ -85,7 +88,7 @@ export default function AdminDashboard() {
   const [cards, setCards] = useState([]);
   const [users, setUsers] = useState([]);
   const [settings, setSettings] = useState({
-    announcementText: 'Welcome to CardVault! Buy premium virtual cards instantly.',
+    announcementText: 'Welcome to Dropzen! Verified Pan-India Dropshipping Leads & COD Buyer Data.',
     announcementActive: true,
     maintenanceMode: false,
     globalDiscount: 0,
@@ -119,21 +122,23 @@ export default function AdminDashboard() {
   const [rejectReason, setRejectReason] = useState('Payment not credited to bank account');
   const [customRejectReason, setCustomRejectReason] = useState('');
 
-  // Card Form State
+  // Product & Bundle Form State
   const [cardForm, setCardForm] = useState({
-    type: 'visa',
+    title: '',
+    category: 'Home & Kitchen',
+    price: 999,
+    originalPrice: 2499,
+    recordsCount: 5000,
+    meeshoCost: 199,
+    resellPrice: 899,
+    badge: '🔥 Trending',
+    image: '',
+    deliveryTime: '5 - 10 Mins Automated',
+    description: '',
     name: '',
-    cardNumber: '',
-    cvv: '',
-    cardHolder: 'CARDHOLDER',
-    dob: '15/07/1994',
-    atmPin: '1234',
-    limit: '',
-    expiry: '',
-    refund: '100% Refundable',
-    delivery: 'Instant Delivery',
-    entryFee: '',
-    qty: 10,
+    type: 'Home & Kitchen',
+    entryFee: 999,
+    qty: 5000,
     gradientStart: '#1e3c72',
     gradientEnd: '#2a5298'
   });
@@ -148,12 +153,158 @@ export default function AdminDashboard() {
     atmPin: ''
   });
 
+  // Direct Product Image Upload States
+  const productImageInputRef = useRef(null);
+  const [showUrlInput, setShowUrlInput] = useState(false);
+  const [imageUploading, setImageUploading] = useState(false);
+
   const showToast = useCallback((message, type = 'success') => {
     setToast({ message, type });
     setTimeout(() => setToast(null), 4000);
   }, []);
 
+  const handleProductImageUpload = (e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    if (!file.type.startsWith('image/')) {
+      showToast('Please select an image file (JPG, PNG, WEBP)', 'warning');
+      return;
+    }
+
+    if (file.size > 15 * 1024 * 1024) {
+      showToast('Image file size too large (max 15MB)', 'warning');
+      return;
+    }
+
+    setImageUploading(true);
+    const reader = new FileReader();
+    reader.onload = (event) => {
+      const img = new Image();
+      img.onload = () => {
+        // High quality web resize: max 1000px
+        const maxDim = 1000;
+        let width = img.width;
+        let height = img.height;
+
+        if (width > maxDim || height > maxDim) {
+          if (width > height) {
+            height = Math.round((height * maxDim) / width);
+            width = maxDim;
+          } else {
+            width = Math.round((width * maxDim) / height);
+            height = maxDim;
+          }
+        }
+
+        const canvas = document.createElement('canvas');
+        canvas.width = width;
+        canvas.height = height;
+        const ctx = canvas.getContext('2d');
+        ctx.drawImage(img, 0, 0, width, height);
+
+        const optimizedDataUrl = canvas.toDataURL('image/jpeg', 0.88);
+        setCardForm(prev => ({ ...prev, image: optimizedDataUrl }));
+        setImageUploading(false);
+        showToast('Product image uploaded and optimized successfully!', 'success');
+      };
+
+      img.onerror = () => {
+        setImageUploading(false);
+        showToast('Failed to process image file', 'error');
+      };
+
+      img.src = event.target.result;
+    };
+
+    reader.onerror = () => {
+      setImageUploading(false);
+      showToast('Error reading image file', 'error');
+    };
+
+    reader.readAsDataURL(file);
+  };
+
+  const [notificationsEnabled, setNotificationsEnabled] = useState(false);
   const prevAdminOrdersCountRef = useRef(null);
+
+  // Native PWA App Badging API Helper (Free on Android/Desktop/iOS PWA)
+  const updateAppIconBadge = useCallback((count) => {
+    if (typeof navigator !== 'undefined') {
+      if (count > 0 && 'setAppBadge' in navigator) {
+        navigator.setAppBadge(count).catch(() => {});
+      } else if (count === 0 && 'clearAppBadge' in navigator) {
+        navigator.clearAppBadge().catch(() => {});
+      }
+    }
+  }, []);
+
+  // Web Audio Synthesized Payment Bell Chime
+  const playPaymentChime = useCallback(() => {
+    try {
+      const AudioCtx = window.AudioContext || window.webkitAudioContext;
+      if (!AudioCtx) return;
+      const ctx = new AudioCtx();
+      const now = ctx.currentTime;
+
+      // Tone 1: High Bell Note
+      const osc1 = ctx.createOscillator();
+      const gain1 = ctx.createGain();
+      osc1.type = 'sine';
+      osc1.frequency.setValueAtTime(587.33, now); // D5
+      osc1.frequency.exponentialRampToValueAtTime(880, now + 0.12); // A5
+      gain1.gain.setValueAtTime(0.35, now);
+      gain1.gain.exponentialRampToValueAtTime(0.001, now + 0.38);
+      osc1.connect(gain1);
+      gain1.connect(ctx.destination);
+      osc1.start(now);
+      osc1.stop(now + 0.38);
+
+      // Tone 2: Shimmer Sparkle
+      const osc2 = ctx.createOscillator();
+      const gain2 = ctx.createGain();
+      osc2.type = 'triangle';
+      osc2.frequency.setValueAtTime(1174.66, now + 0.1); // D6
+      gain2.gain.setValueAtTime(0.28, now + 0.1);
+      gain2.gain.exponentialRampToValueAtTime(0.001, now + 0.48);
+      osc2.connect(gain2);
+      gain2.connect(ctx.destination);
+      osc2.start(now + 0.1);
+      osc2.stop(now + 0.48);
+    } catch (e) {}
+  }, []);
+
+  // One-click notification permission request & test
+  const handleToggleNotifications = async () => {
+    if (typeof window === 'undefined') return;
+    if (!('Notification' in window)) {
+      showToast('Push notifications not supported on this browser', 'warning');
+      return;
+    }
+
+    if (Notification.permission === 'granted') {
+      playPaymentChime();
+      updateAppIconBadge(stats.pendingOrders || 1);
+      showToast('✅ Payment alerts & app badge active!', 'success');
+      setNotificationsEnabled(true);
+      return;
+    }
+
+    try {
+      const perm = await Notification.requestPermission();
+      if (perm === 'granted') {
+        playPaymentChime();
+        updateAppIconBadge(stats.pendingOrders || 1);
+        showToast('✅ Free payment alerts & app badge enabled!', 'success');
+        setNotificationsEnabled(true);
+      } else {
+        showToast('Notification permission was dismissed', 'warning');
+        setNotificationsEnabled(false);
+      }
+    } catch (e) {
+      showToast('Unable to request notification permission', 'error');
+    }
+  };
 
   const loadDashboardData = useCallback(async (isSilent = false) => {
     try {
@@ -215,6 +366,9 @@ export default function AdminDashboard() {
       const adminUsersCount = fetchedUsers.filter(u => u.isAdmin).length;
       const customerUsersCount = fetchedUsers.filter(u => !u.isAdmin).length;
 
+      // Update native PWA icon badge with pending payment requests
+      updateAppIconBadge(pendingOrdersCount);
+
       setStats({
         totalSales,
         totalUsers: fetchedUsers.length,
@@ -236,7 +390,7 @@ export default function AdminDashboard() {
     } finally {
       if (!isSilent) setLoadingData(false);
     }
-  }, [showToast]);
+  }, [showToast, updateAppIconBadge]);
 
   // Initial dashboard load
   useEffect(() => {
@@ -258,11 +412,28 @@ export default function AdminDashboard() {
             if (data.success && Array.isArray(data.orders)) {
               const freshOrders = data.orders;
               const pendingCount = freshOrders.filter((o) => o.status === 'pending').length;
+              
               if (prevAdminOrdersCountRef.current !== null && pendingCount > prevAdminOrdersCountRef.current) {
                 const diff = pendingCount - prevAdminOrdersCountRef.current;
                 showToast(`🔔 ${diff} new payment verification request${diff > 1 ? 's' : ''} received!`, 'warning');
+                
+                // Play pleasant payment chime
+                playPaymentChime();
+
+                // Trigger browser push notification if enabled
+                if (typeof Notification !== 'undefined' && Notification.permission === 'granted') {
+                  try {
+                    new Notification('Dropzen Alert: New Payment Received!', {
+                      body: `🔔 ${diff} new order payment waiting for verification.`,
+                      icon: '/icon.svg',
+                      badge: '/icon.svg'
+                    });
+                  } catch (e) {}
+                }
               }
+
               prevAdminOrdersCountRef.current = pendingCount;
+              updateAppIconBadge(pendingCount);
               setOrders(freshOrders);
               
               const freshCompleted = freshOrders.filter((o) => o.status === 'completed');
@@ -289,7 +460,7 @@ export default function AdminDashboard() {
     }, 12000);
 
     return () => clearInterval(intervalId);
-  }, [user, showToast]);
+  }, [user, showToast, playPaymentChime, updateAppIconBadge]);
 
 
 
@@ -441,37 +612,41 @@ export default function AdminDashboard() {
 
     if (type === 'edit' && card) {
       setCardForm({
-        type: card.type,
-        name: card.name,
-        cardNumber: card.cardNumber,
-        cvv: card.cvv,
-        cardHolder: card.cardHolder || 'CARDHOLDER',
-        dob: card.dob || '15/07/1994',
-        atmPin: card.atmPin || '1234',
-        limit: card.limit,
-        expiry: card.expiry,
-        refund: card.refund,
-        delivery: card.delivery,
-        entryFee: card.entryFee,
-        qty: card.qty,
-        gradientStart: card.gradientStart,
-        gradientEnd: card.gradientEnd
+        title: card.title || card.name || '',
+        category: card.category || card.type || 'Home & Kitchen',
+        price: card.price || card.entryFee || 999,
+        originalPrice: card.originalPrice || 2499,
+        recordsCount: card.recordsCount || card.qty || 5000,
+        meeshoCost: card.meeshoCost || 199,
+        resellPrice: card.resellPrice || 899,
+        badge: card.badge || '🔥 Trending',
+        image: card.image || '',
+        deliveryTime: card.deliveryTime || '5 - 10 Mins Automated',
+        description: card.description || '',
+        name: card.title || card.name || '',
+        type: card.category || card.type || 'Home & Kitchen',
+        entryFee: card.price || card.entryFee || 999,
+        qty: card.recordsCount || card.qty || 5000,
+        gradientStart: card.gradientStart || '#1e3c72',
+        gradientEnd: card.gradientEnd || '#2a5298'
       });
     } else {
       setCardForm({
-        type: 'visa',
+        title: '',
+        category: 'Home & Kitchen',
+        price: 999,
+        originalPrice: 2499,
+        recordsCount: 5000,
+        meeshoCost: 199,
+        resellPrice: 899,
+        badge: '🔥 Trending',
+        image: '',
+        deliveryTime: '5 - 10 Mins Automated',
+        description: '',
         name: '',
-        cardNumber: '',
-        cvv: '***',
-        cardHolder: 'CARDHOLDER',
-        dob: '15/07/1994',
-        atmPin: '1234',
-        limit: '',
-        expiry: '',
-        refund: '100% Refundable',
-        delivery: 'Instant Delivery',
-        entryFee: '',
-        qty: 10,
+        type: 'Home & Kitchen',
+        entryFee: 999,
+        qty: 5000,
         gradientStart: '#1e3c72',
         gradientEnd: '#2a5298'
       });
@@ -691,7 +866,7 @@ export default function AdminDashboard() {
       <aside className="admin-sidebar">
         <div className="sidebar-brand">
           <Shield size={22} className="logo-icon" />
-          <span className="brand-text">CardVault Admin</span>
+          <span className="brand-text">Dropzen Admin</span>
         </div>
 
         <div className="sidebar-profile">
@@ -713,7 +888,7 @@ export default function AdminDashboard() {
             {stats.pendingOrders > 0 && <span className="sidebar-badge">{stats.pendingOrders}</span>}
           </button>
           <button onClick={() => setActiveTab('cards')} className={`sidebar-menu-btn ${activeTab === 'cards' ? 'active' : ''}`}>
-            <CardIcon size={18} /> Manage Catalog
+            <Layers size={18} /> Leads Catalog
           </button>
           <button onClick={() => setActiveTab('users')} className={`sidebar-menu-btn ${activeTab === 'users' ? 'active' : ''}`}>
             <Users size={18} /> User Accounts
@@ -736,14 +911,28 @@ export default function AdminDashboard() {
       {/* 2. MOBILE HEADER APP BAR */}
       <header className="admin-mobile-topbar">
         <div className="mobile-header-left">
-          <Shield size={20} className="logo-icon-mobile" />
-          <h1>Admin Control</h1>
+          <Link href="/" className="mobile-home-btn" title="Back to Website">
+            <ArrowLeft size={18} />
+          </Link>
+          <div className="mobile-header-brand">
+            <Shield size={18} className="logo-icon-mobile" />
+            <span className="mobile-brand-title">Dropzen Admin</span>
+          </div>
         </div>
         <div className="mobile-header-actions">
-          <button onClick={loadDashboardData} className="mobile-header-icon-btn">
+          <button 
+            type="button"
+            onClick={handleToggleNotifications} 
+            className="mobile-header-icon-btn" 
+            title={notificationsEnabled ? "App Alerts & Badges Active" : "Enable Free Payment Badges"}
+            style={{ color: notificationsEnabled ? '#10b981' : '#f59e0b' }}
+          >
+            <Bell size={16} />
+          </button>
+          <button onClick={loadDashboardData} className="mobile-header-icon-btn" title="Refresh Data">
             <RefreshCw size={16} />
           </button>
-          <button onClick={handleLogout} className="mobile-header-icon-btn mobile-logout">
+          <button onClick={handleLogout} className="mobile-header-icon-btn mobile-logout" title="Log Out">
             <LogOut size={16} />
           </button>
         </div>
@@ -756,13 +945,31 @@ export default function AdminDashboard() {
           <h2>
             {activeTab === 'dashboard' && 'Dashboard Overview'}
             {activeTab === 'orders' && 'Verify Transactions'}
-            {activeTab === 'cards' && 'Card Products'}
+            {activeTab === 'cards' && 'Products & Leads Bundles'}
             {activeTab === 'users' && 'Account Manager'}
             {activeTab === 'settings' && 'Global Configurations'}
           </h2>
-          <button onClick={loadDashboardData} className="btn-secondary-compact desktop-only">
-            <RefreshCw size={12} /> Refresh Data
-          </button>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+            <button 
+              type="button"
+              onClick={handleToggleNotifications} 
+              className="btn-secondary-compact"
+              style={{ 
+                color: notificationsEnabled ? '#059669' : '#d97706', 
+                borderColor: notificationsEnabled ? '#a7f3d0' : '#fde68a', 
+                background: notificationsEnabled ? '#ecfdf5' : '#fffbeb',
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: '5px'
+              }}
+              title="Free App Icon Badge & Sound Alert"
+            >
+              <Bell size={12} /> {notificationsEnabled ? 'Alerts Active' : 'Enable Badges'}
+            </button>
+            <button onClick={loadDashboardData} className="btn-secondary-compact desktop-only">
+              <RefreshCw size={12} /> Refresh Data
+            </button>
+          </div>
         </div>
 
         {loadingData ? (
@@ -1383,13 +1590,15 @@ export default function AdminDashboard() {
               );
             })()}
 
-            {/* TAB CONTENT: 3. MANAGE CARD CATALOG */}
+            {/* TAB CONTENT: 3. MANAGE DROPSHIPPING PRODUCTS & LEADS CATALOG */}
             {activeTab === 'cards' && (() => {
               const filteredCards = cards.filter(card => {
                 const searchLower = cardSearch.toLowerCase();
-                const cardName = card.name?.toLowerCase() || '';
+                const cardName = (card.title || card.name || '').toLowerCase();
                 const matchesSearch = cardName.includes(searchLower);
-                const matchesFilter = cardFilter === 'all' || card.type?.toLowerCase() === cardFilter.toLowerCase();
+                const matchesFilter = cardFilter === 'all' || 
+                  (card.category && card.category.toLowerCase() === cardFilter.toLowerCase()) ||
+                  (card.type && card.type.toLowerCase() === cardFilter.toLowerCase());
                 return matchesSearch && matchesFilter;
               });
 
@@ -1397,12 +1606,13 @@ export default function AdminDashboard() {
                 <div>
                   <div className="panel-header">
                     <div>
-                      <h2 className="panel-title">Manage Virtual Cards Catalog</h2>
+                      <h2 className="panel-title">Manage Dropshipping Leads Catalog</h2>
+                      <span className="admin-subtitle">Add, edit, and organize trending buyer lead bundles.</span>
                     </div>
                     <div className="filter-controls-row">
                       <input
                         type="text"
-                        placeholder="Search by card name..."
+                        placeholder="Search bundle title..."
                         className="search-input"
                         value={cardSearch}
                         onChange={(e) => setCardSearch(e.target.value)}
@@ -1412,77 +1622,94 @@ export default function AdminDashboard() {
                         value={cardFilter}
                         onChange={(e) => setCardFilter(e.target.value)}
                       >
-                        <option value="all">All Brands</option>
-                        <option value="visa">Visa</option>
-                        <option value="mastercard">Mastercard</option>
-                        <option value="rupay">Rupay</option>
+                        <option value="all">All Categories</option>
+                        <option value="Home & Kitchen">Home & Kitchen</option>
+                        <option value="High-Ticket Buyers">High-Ticket Buyers</option>
+                        <option value="Fashion & Apparel">Fashion & Apparel</option>
+                        <option value="Electronics & Gadgets">Electronics & Gadgets</option>
+                        <option value="Beauty & Wellness">Beauty & Wellness</option>
                       </select>
                       <button className="btn-primary" style={{ padding: '10px 20px', borderRadius: 'var(--radius-sm)' }} onClick={() => handleOpenCardModal('add')}>
-                        <Plus size={16} /> Add Card
+                        <Plus size={16} /> Add Bundle
                       </button>
                     </div>
                   </div>
 
                   {filteredCards.length === 0 ? (
                     <div className="orders-empty-state">
-                      <CardIcon size={32} />
-                      <p>{cards.length === 0 ? 'No cards available. Click "Add Card" to seed the catalog.' : 'No cards matched your search criteria.'}</p>
+                      <ShoppingBag size={32} />
+                      <p>{cards.length === 0 ? 'No bundles available. Click "Add Bundle" to seed the catalog.' : 'No bundles matched your search criteria.'}</p>
                     </div>
                   ) : (
                     <div className="admin-cards-list">
-                      {filteredCards.map((card) => (
-                        <div className="admin-card-showcase" key={card._id}>
-                          <CreditCard
-                            type={card.type}
-                            name={card.name}
-                            cardNumber={card.cardNumber}
-                            cvv={card.cvv}
-                            cardHolder={card.cardHolder}
-                            expiry={card.expiry}
-                            gradientStart={card.gradientStart}
-                            gradientEnd={card.gradientEnd}
-                            isMasked={true}
-                          />
-                          <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', fontSize: '0.85rem' }}>
-                            <div style={{ fontWeight: 'bold', fontSize: '0.95rem' }}>{card.name}</div>
-                            <div>Holder: <strong>{card.cardHolder || 'CARDHOLDER'}</strong></div>
-                            <div>DOB: <strong>{card.dob || '15/07/1994'}</strong> | PIN: <strong style={{ color: 'var(--primary)' }}>{card.atmPin || '1234'}</strong></div>
-                            <div>Type: <strong style={{ textTransform: 'capitalize' }}>{card.type}</strong></div>
-                            <div>Limit: <strong>{card.limit}</strong></div>
-                            <div>Fee: <strong>₹{card.entryFee} INR</strong></div>
-                            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginTop: '4px', background: 'rgba(255,255,255,0.03)', padding: '4px 8px', borderRadius: '6px' }}>
-                              <span>Stock: <strong style={{ color: (card.qty || 0) < 10 ? '#ef4444' : 'inherit' }}>{card.qty || 0} units</strong></span>
-                              <div style={{ display: 'flex', gap: '4px', alignItems: 'center' }}>
-                                <button
-                                  type="button"
-                                  title="Reduce inventory by 1"
-                                  onClick={() => handleQuickStock(card, -1)}
-                                  className="btn-stock-quick"
-                                  disabled={(card.qty || 0) <= 0}
-                                >
-                                  -1
-                                </button>
-                                <button
-                                  type="button"
-                                  title="Restock inventory by +5"
-                                  onClick={() => handleQuickStock(card, 5)}
-                                  className="btn-stock-quick btn-stock-plus"
-                                >
-                                  +5
-                                </button>
+                      {filteredCards.map((card) => {
+                        const title = card.title || card.name || 'Dropshipping Bundle';
+                        const category = card.category || card.type || 'General';
+                        const fee = card.price || card.entryFee || 999;
+                        const records = card.recordsCount || card.qty || 5000;
+                        const wholesale = card.meeshoCost || 199;
+                        const retail = card.resellPrice || 899;
+                        const margin = retail - wholesale;
+
+                        return (
+                          <div className="admin-card-showcase" key={card._id} style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                            <div style={{ display: 'flex', gap: '14px', alignItems: 'center' }}>
+                              {card.image ? (
+                                /* eslint-disable-next-line @next/next/no-img-element */
+                                <img
+                                  src={card.image}
+                                  alt={title}
+                                  style={{ width: '90px', height: '68px', objectFit: 'cover', borderRadius: '10px', flexShrink: 0, border: '1px solid var(--border-color)' }}
+                                />
+                              ) : (
+                                <div style={{ width: '90px', height: '68px', borderRadius: '10px', background: 'rgba(99, 102, 241, 0.1)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                                  <ShoppingBag size={28} color="#818cf8" />
+                                </div>
+                              )}
+                              <div style={{ flex: 1, minWidth: 0 }}>
+                                <div style={{ display: 'flex', gap: '6px', alignItems: 'center', marginBottom: '4px' }}>
+                                  <span style={{ fontSize: '0.72rem', background: 'rgba(99, 102, 241, 0.12)', color: 'var(--primary)', padding: '2px 7px', borderRadius: '4px', fontWeight: 700 }}>
+                                    {category}
+                                  </span>
+                                  <span style={{ fontSize: '0.72rem', background: 'rgba(245, 158, 11, 0.12)', color: '#fbbf24', padding: '2px 7px', borderRadius: '4px', fontWeight: 600 }}>
+                                    {card.badge || '🔥 Trending'}
+                                  </span>
+                                </div>
+                                <h4 style={{ margin: 0, fontSize: '0.96rem', fontWeight: 800, color: 'var(--text-primary)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }} title={title}>
+                                  {title}
+                                </h4>
+                                <div style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', marginTop: '4px' }}>
+                                  <strong>{records.toLocaleString()} Leads</strong> &bull; Fee: <strong style={{ color: '#10b981' }}>₹{fee}</strong>
+                                </div>
                               </div>
                             </div>
+
+                            <div style={{ background: 'rgba(0,0,0,0.03)', padding: '10px 12px', borderRadius: '8px', fontSize: '0.8rem', display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '6px', textAlign: 'center' }}>
+                              <div>
+                                <span style={{ color: '#64748b', fontSize: '0.7rem', display: 'block' }}>Wholesale</span>
+                                <strong>₹{wholesale}</strong>
+                              </div>
+                              <div>
+                                <span style={{ color: '#64748b', fontSize: '0.7rem', display: 'block' }}>Resell</span>
+                                <strong>₹{retail}</strong>
+                              </div>
+                              <div>
+                                <span style={{ color: '#059669', fontSize: '0.7rem', display: 'block', fontWeight: 700 }}>Net Margin</span>
+                                <strong style={{ color: '#059669' }}>+₹{margin}</strong>
+                              </div>
+                            </div>
+
+                            <div className="admin-card-actions" style={{ display: 'flex', justifyContent: 'flex-end', gap: '8px' }}>
+                              <button onClick={() => handleOpenCardModal('edit', card)} className="btn-admin-action" style={{ color: 'var(--primary)' }}>
+                                <Edit size={14} /> Edit
+                              </button>
+                              <button onClick={() => handleDeleteCard(card._id)} className="btn-admin-action" style={{ color: 'var(--accent)' }}>
+                                <Trash2 size={14} /> Delete
+                              </button>
+                            </div>
                           </div>
-                          <div className="admin-card-actions">
-                            <button onClick={() => handleOpenCardModal('edit', card)} className="btn-admin-action" style={{ color: 'var(--primary)' }}>
-                              <Edit size={14} /> Edit
-                            </button>
-                            <button onClick={() => handleDeleteCard(card._id)} className="btn-admin-action" style={{ color: 'var(--accent)' }}>
-                              <Trash2 size={14} /> Delete
-                            </button>
-                          </div>
-                        </div>
-                      ))}
+                        );
+                      })}
                     </div>
                   )}
                 </div>
@@ -1748,8 +1975,8 @@ export default function AdminDashboard() {
           <span>Verify</span>
         </button>
         <button onClick={() => setActiveTab('cards')} className={`bottom-nav-btn ${activeTab === 'cards' ? 'active' : ''}`}>
-          <CardIcon size={20} />
-          <span>Catalog</span>
+          <ShoppingBag size={20} />
+          <span>Bundles</span>
         </button>
         <button onClick={() => setActiveTab('users')} className={`bottom-nav-btn ${activeTab === 'users' ? 'active' : ''}`}>
           <Users size={20} />
@@ -1761,14 +1988,14 @@ export default function AdminDashboard() {
         </button>
       </nav>
 
-      {/* --- ADD / EDIT CARD MODAL --- */}
+      {/* --- ADD / EDIT PRODUCT BUNDLE MODAL --- */}
       {cardModalOpen && (
         <div className="admin-modal-overlay" onClick={() => setCardModalOpen(false)}>
-          <div className="admin-modal-container" onClick={(e) => e.stopPropagation()}>
+          <div className="admin-modal-container" onClick={(e) => e.stopPropagation()} style={{ maxWidth: '640px' }}>
             <div className="admin-modal-content">
               <div className="admin-modal-header">
                 <h3 className="admin-modal-title">
-                  {cardModalType === 'add' ? 'Add New Card Product' : 'Modify Card Details'}
+                  {cardModalType === 'add' ? 'Add New Dropshipping Leads Bundle' : 'Modify Leads Bundle Details'}
                 </h3>
                 <span className="admin-modal-close" onClick={() => setCardModalOpen(false)}>
                   <XCircle size={20} />
@@ -1778,25 +2005,74 @@ export default function AdminDashboard() {
               <form className="admin-form" onSubmit={handleCardSubmit}>
                 <div className="admin-form-row">
                   <div className="admin-form-group">
-                    <label className="admin-form-label">Card Type</label>
+                    <label className="admin-form-label">Category</label>
                     <select
                       className="admin-form-select"
-                      value={cardForm.type}
-                      onChange={(e) => setCardForm({ ...cardForm, type: e.target.value })}
+                      value={cardForm.category || cardForm.type}
+                      onChange={(e) => setCardForm({ ...cardForm, category: e.target.value, type: e.target.value })}
                     >
-                      <option value="visa">Visa</option>
-                      <option value="mastercard">Mastercard</option>
-                      <option value="rupay">Rupay</option>
+                      <option value="Home & Kitchen">Home &amp; Kitchen</option>
+                      <option value="High-Ticket Buyers">High-Ticket Buyers</option>
+                      <option value="Fashion & Apparel">Fashion &amp; Apparel</option>
+                      <option value="Electronics & Gadgets">Electronics &amp; Gadgets</option>
+                      <option value="Beauty & Wellness">Beauty &amp; Wellness</option>
+                      <option value="General">General Dropshipping</option>
                     </select>
                   </div>
                   <div className="admin-form-group">
-                    <label className="admin-form-label">Card Display Name</label>
+                    <label className="admin-form-label">Trending Badge</label>
                     <input
                       type="text"
                       className="admin-form-input"
-                      placeholder="e.g. Visa Premium Elite"
-                      value={cardForm.name}
-                      onChange={(e) => setCardForm({ ...cardForm, name: e.target.value })}
+                      placeholder="e.g. 🔥 Most Popular, ⚡ High Margin"
+                      value={cardForm.badge || ''}
+                      onChange={(e) => setCardForm({ ...cardForm, badge: e.target.value })}
+                    />
+                  </div>
+                </div>
+
+                <div className="admin-form-group">
+                  <label className="admin-form-label">Bundle Title</label>
+                  <input
+                    type="text"
+                    className="admin-form-input"
+                    placeholder="e.g. 5,000+ Verified COD Buyers - Home & Kitchen Viral Gadgets"
+                    value={cardForm.title || cardForm.name || ''}
+                    onChange={(e) => setCardForm({ ...cardForm, title: e.target.value, name: e.target.value })}
+                    required
+                  />
+                </div>
+
+                <div className="admin-form-row">
+                  <div className="admin-form-group">
+                    <label className="admin-form-label">Selling Price (₹ INR)</label>
+                    <input
+                      type="number"
+                      className="admin-form-input"
+                      placeholder="e.g. 1350"
+                      value={cardForm.price || cardForm.entryFee || ''}
+                      onChange={(e) => setCardForm({ ...cardForm, price: Number(e.target.value), entryFee: Number(e.target.value) })}
+                      required
+                    />
+                  </div>
+                  <div className="admin-form-group">
+                    <label className="admin-form-label">Original Strikethrough Price (₹)</label>
+                    <input
+                      type="number"
+                      className="admin-form-input"
+                      placeholder="e.g. 3499"
+                      value={cardForm.originalPrice || ''}
+                      onChange={(e) => setCardForm({ ...cardForm, originalPrice: Number(e.target.value) })}
+                    />
+                  </div>
+                  <div className="admin-form-group">
+                    <label className="admin-form-label">Total Leads Included</label>
+                    <input
+                      type="number"
+                      className="admin-form-input"
+                      placeholder="e.g. 5240"
+                      value={cardForm.recordsCount || cardForm.qty || ''}
+                      onChange={(e) => setCardForm({ ...cardForm, recordsCount: Number(e.target.value), qty: Number(e.target.value) })}
                       required
                     />
                   </div>
@@ -1804,163 +2080,184 @@ export default function AdminDashboard() {
 
                 <div className="admin-form-row">
                   <div className="admin-form-group">
-                    <label className="admin-form-label">Card Face Number</label>
+                    <label className="admin-form-label">Meesho Wholesale Cost (₹)</label>
                     <input
-                      type="text"
+                      type="number"
                       className="admin-form-input"
-                      placeholder="e.g. 4532 7812 9045 8823"
-                      value={cardForm.cardNumber}
-                      onChange={(e) => setCardForm({ ...cardForm, cardNumber: e.target.value })}
-                      required
+                      placeholder="e.g. 199"
+                      value={cardForm.meeshoCost || ''}
+                      onChange={(e) => setCardForm({ ...cardForm, meeshoCost: Number(e.target.value) })}
                     />
                   </div>
                   <div className="admin-form-group">
-                    <label className="admin-form-label">CVV (Default placeholder)</label>
+                    <label className="admin-form-label">Resell Retail Price (₹)</label>
+                    <input
+                      type="number"
+                      className="admin-form-input"
+                      placeholder="e.g. 899"
+                      value={cardForm.resellPrice || ''}
+                      onChange={(e) => setCardForm({ ...cardForm, resellPrice: Number(e.target.value) })}
+                    />
+                  </div>
+                  <div className="admin-form-group">
+                    <label className="admin-form-label">Estimated Net Margin</label>
                     <input
                       type="text"
                       className="admin-form-input"
-                      placeholder="e.g. 942"
-                      value={cardForm.cvv}
-                      onChange={(e) => setCardForm({ ...cardForm, cvv: e.target.value })}
+                      value={`+₹${(cardForm.resellPrice || 899) - (cardForm.meeshoCost || 199)} / order`}
+                      readOnly
+                      style={{ background: 'rgba(16, 185, 129, 0.08)', color: '#059669', fontWeight: 700 }}
                     />
                   </div>
                 </div>
 
-                <div className="admin-form-row">
-                  <div className="admin-form-group">
-                    <label className="admin-form-label">Cardholder Name</label>
-                    <input
-                      type="text"
-                      className="admin-form-input"
-                      placeholder="e.g. AARAV SHARMA"
-                      value={cardForm.cardHolder}
-                      onChange={(e) => setCardForm({ ...cardForm, cardHolder: e.target.value })}
-                      required
-                    />
+                <div className="admin-form-group">
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '6px' }}>
+                    <label className="admin-form-label" style={{ margin: 0 }}>Product Image (Direct Device Upload)</label>
+                    <button
+                      type="button"
+                      onClick={() => setShowUrlInput(!showUrlInput)}
+                      style={{
+                        background: 'none',
+                        border: 'none',
+                        color: 'var(--primary)',
+                        fontSize: '0.78rem',
+                        fontWeight: 600,
+                        cursor: 'pointer',
+                        padding: '0 4px',
+                        textDecoration: 'underline'
+                      }}
+                    >
+                      {showUrlInput ? 'Hide URL input' : 'Or enter web URL'}
+                    </button>
                   </div>
-                  <div className="admin-form-group">
-                    <label className="admin-form-label">Date of Birth (DOB)</label>
-                    <input
-                      type="text"
-                      className="admin-form-input"
-                      placeholder="e.g. 15/07/1994"
-                      value={cardForm.dob}
-                      onChange={(e) => setCardForm({ ...cardForm, dob: e.target.value })}
-                      required
-                    />
-                  </div>
-                  <div className="admin-form-group">
-                    <label className="admin-form-label">ATM PIN</label>
-                    <input
-                      type="text"
-                      className="admin-form-input"
-                      placeholder="e.g. 1234"
-                      value={cardForm.atmPin}
-                      onChange={(e) => setCardForm({ ...cardForm, atmPin: e.target.value })}
-                      required
-                    />
-                  </div>
+
+                  {/* Hidden file input for camera / gallery / file picker */}
+                  <input
+                    type="file"
+                    ref={productImageInputRef}
+                    accept="image/*"
+                    style={{ display: 'none' }}
+                    onChange={handleProductImageUpload}
+                  />
+
+                  {cardForm.image ? (
+                    /* Image Preview with Change & Delete options */
+                    <div className="image-preview-card">
+                      <div className="image-preview-thumb">
+                        {/* eslint-disable-next-line @next/next/no-img-element */}
+                        <img
+                          src={cardForm.image}
+                          alt="Product Preview"
+                          onError={(e) => { e.target.src = 'https://images.unsplash.com/photo-1526738549149-8e07eca6c147?w=600&q=80'; }}
+                        />
+                      </div>
+                      <div className="image-preview-details">
+                        <div className="image-preview-status">
+                          <CheckCircle size={15} color="var(--success)" />
+                          <span>Image Attached &amp; Ready</span>
+                        </div>
+                        <div className="image-preview-actions">
+                          <button
+                            type="button"
+                            className="btn-image-action"
+                            onClick={() => productImageInputRef.current?.click()}
+                            disabled={imageUploading}
+                          >
+                            <Upload size={13} /> {imageUploading ? 'Processing...' : 'Change Photo'}
+                          </button>
+                          <button
+                            type="button"
+                            className="btn-image-action danger"
+                            onClick={() => {
+                              setCardForm({ ...cardForm, image: '' });
+                              if (productImageInputRef.current) productImageInputRef.current.value = '';
+                            }}
+                          >
+                            <Trash2 size={13} /> Remove
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+                  ) : (
+                    /* Direct Device Upload Dropzone */
+                    <div
+                      className="image-upload-dropzone"
+                      onClick={() => productImageInputRef.current?.click()}
+                      title="Click to choose an image from phone or computer"
+                    >
+                      <div className="image-upload-icon">
+                        {imageUploading ? (
+                          <Loader2 size={24} className="animate-spin" />
+                        ) : (
+                          <Camera size={24} />
+                        )}
+                      </div>
+                      <div className="image-upload-title">
+                        {imageUploading ? 'Optimizing image...' : 'Tap to Upload Photo from Device'}
+                      </div>
+                      <div className="image-upload-subtitle">
+                        Direct upload from Phone Gallery, Camera, or Desktop (JPG, PNG, WEBP)
+                      </div>
+                      <button type="button" className="btn-upload-browse" onClick={(e) => { e.stopPropagation(); productImageInputRef.current?.click(); }}>
+                        <Upload size={13} style={{ marginRight: '4px' }} /> Select File
+                      </button>
+                    </div>
+                  )}
+
+                  {/* Optional URL input if user specifically wants to paste a link */}
+                  {showUrlInput && (
+                    <div style={{ marginTop: '10px' }}>
+                      <input
+                        type="url"
+                        className="admin-form-input"
+                        placeholder="Or paste direct image URL (e.g. https://images.unsplash.com/...)"
+                        value={cardForm.image?.startsWith('data:') ? '' : cardForm.image || ''}
+                        onChange={(e) => setCardForm({ ...cardForm, image: e.target.value })}
+                      />
+                    </div>
+                  )}
                 </div>
 
                 <div className="admin-form-row">
-                  <div className="admin-form-group">
-                    <label className="admin-form-label">Spending Limit</label>
-                    <input
-                      type="text"
-                      className="admin-form-input"
-                      placeholder="e.g. $1,500 / month"
-                      value={cardForm.limit}
-                      onChange={(e) => setCardForm({ ...cardForm, limit: e.target.value })}
-                      required
-                    />
-                  </div>
-                  <div className="admin-form-group">
-                    <label className="admin-form-label">Expiry (MM/YY)</label>
-                    <input
-                      type="text"
-                      className="admin-form-input"
-                      placeholder="e.g. 12/28"
-                      value={cardForm.expiry}
-                      onChange={(e) => setCardForm({ ...cardForm, expiry: e.target.value })}
-                      required
-                    />
-                  </div>
-                </div>
-
-                <div className="admin-form-row">
-                  <div className="admin-form-group">
-                    <label className="admin-form-label">Refund Policy</label>
-                    <input
-                      type="text"
-                      className="admin-form-input"
-                      value={cardForm.refund}
-                      onChange={(e) => setCardForm({ ...cardForm, refund: e.target.value })}
-                    />
-                  </div>
                   <div className="admin-form-group">
                     <label className="admin-form-label">Delivery Speed</label>
                     <input
                       type="text"
                       className="admin-form-input"
-                      value={cardForm.delivery}
-                      onChange={(e) => setCardForm({ ...cardForm, delivery: e.target.value })}
+                      value={cardForm.deliveryTime || cardForm.delivery || '5 - 10 Mins Automated'}
+                      onChange={(e) => setCardForm({ ...cardForm, deliveryTime: e.target.value, delivery: e.target.value })}
+                    />
+                  </div>
+                  <div className="admin-form-group">
+                    <label className="admin-form-label">Freshness Tag</label>
+                    <input
+                      type="text"
+                      className="admin-form-input"
+                      value={cardForm.freshness || 'Updated Sept 2026'}
+                      onChange={(e) => setCardForm({ ...cardForm, freshness: e.target.value })}
                     />
                   </div>
                 </div>
 
-                <div className="admin-form-row">
-                  <div className="admin-form-group">
-                    <label className="admin-form-label">Entry Fee (INR Price / ₹)</label>
-                    <input
-                      type="number"
-                      className="admin-form-input"
-                      placeholder="e.g. 15"
-                      value={cardForm.entryFee}
-                      onChange={(e) => setCardForm({ ...cardForm, entryFee: e.target.value })}
-                      required
-                    />
-                  </div>
-                  <div className="admin-form-group">
-                    <label className="admin-form-label">In-Stock Quantity</label>
-                    <input
-                      type="number"
-                      className="admin-form-input"
-                      value={cardForm.qty}
-                      onChange={(e) => setCardForm({ ...cardForm, qty: e.target.value })}
-                      required
-                    />
-                  </div>
-                </div>
-
-                <div className="admin-form-row">
-                  <div className="admin-form-group">
-                    <label className="admin-form-label">Card Gradient Start Color</label>
-                    <input
-                      type="text"
-                      className="admin-form-input"
-                      placeholder="e.g. #1e3c72"
-                      value={cardForm.gradientStart}
-                      onChange={(e) => setCardForm({ ...cardForm, gradientStart: e.target.value })}
-                    />
-                  </div>
-                  <div className="admin-form-group">
-                    <label className="admin-form-label">Card Gradient End Color</label>
-                    <input
-                      type="text"
-                      className="admin-form-input"
-                      placeholder="e.g. #2a5298"
-                      value={cardForm.gradientEnd}
-                      onChange={(e) => setCardForm({ ...cardForm, gradientEnd: e.target.value })}
-                    />
-                  </div>
+                <div className="admin-form-group">
+                  <label className="admin-form-label">Description</label>
+                  <textarea
+                    className="admin-form-input"
+                    rows={2}
+                    placeholder="Describe target buyers, categories, and historical conversion..."
+                    value={cardForm.description || ''}
+                    onChange={(e) => setCardForm({ ...cardForm, description: e.target.value })}
+                    style={{ resize: 'vertical' }}
+                  />
                 </div>
 
                 <div className="admin-form-footer">
                   <button type="button" className="btn-secondary" onClick={() => setCardModalOpen(false)}>
                     Cancel
                   </button>
-                  <button type="submit" className="btn-primary" disabled={submitLoading} style={{ minWidth: '100px' }}>
-                    {submitLoading ? <Loader2 size={16} className="animate-spin" /> : 'Save Card'}
+                  <button type="submit" className="btn-primary" disabled={submitLoading} style={{ minWidth: '120px' }}>
+                    {submitLoading ? <Loader2 size={16} className="animate-spin" /> : 'Save Bundle'}
                   </button>
                 </div>
               </form>
@@ -1975,7 +2272,7 @@ export default function AdminDashboard() {
           <div className="admin-modal-container" onClick={(e) => e.stopPropagation()} style={{ maxWidth: '520px' }}>
             <div className="admin-modal-content">
               <div className="admin-modal-header">
-                <h3 className="admin-modal-title">Verify Payment &amp; Release</h3>
+                <h3 className="admin-modal-title">Verify Payment &amp; Release Leads</h3>
                 <span className="admin-modal-close" onClick={() => setVerifyModalOpen(false)}>
                   <XCircle size={20} />
                 </span>
@@ -1986,7 +2283,7 @@ export default function AdminDashboard() {
                   <span>Buyer: <strong>{selectedOrder.userId?.username}</strong> ({selectedOrder.userId?.email})</span>
                   {selectedOrder.paymentApp && <span className="app-badge">{selectedOrder.paymentApp}</span>}
                 </div>
-                <div>Product: <strong>{selectedOrder.cardId?.name} ({selectedOrder.cardId?.type})</strong></div>
+                <div>Bundle: <strong>{selectedOrder.productSnapshot?.title || selectedOrder.cardSnapshot?.name || selectedOrder.cardId?.name || 'Dropshipping Bundle'}</strong></div>
                 {selectedOrder.senderUpiId && (
                   <div>Sender UPI: <strong style={{ color: 'var(--text-primary)' }}>{selectedOrder.senderUpiId}</strong></div>
                 )}
@@ -2037,7 +2334,7 @@ export default function AdminDashboard() {
               <div className="verify-bank-notice">
                 <AlertTriangle size={18} color="#d97706" style={{ flexShrink: 0, marginTop: '2px' }} />
                 <div style={{ fontSize: '0.82rem', color: '#92400e', lineHeight: 1.4 }}>
-                  <strong>Mandatory Bank Check:</strong> Check your bank/UPI app statement to confirm that ₹{selectedOrder.pricePaid} is actually credited with UTR {selectedOrder.utrNumber}.
+                  <strong>Mandatory Bank Check:</strong> Confirm that ₹{selectedOrder.pricePaid} is actually received in your bank/UPI statement with UTR <strong>{selectedOrder.utrNumber}</strong>.
                 </div>
               </div>
 
@@ -2049,84 +2346,19 @@ export default function AdminDashboard() {
                   checked={bankVerified}
                   onChange={(e) => setBankVerified(e.target.checked)}
                 />
-                <span>I confirm that ₹{selectedOrder.pricePaid} INR has been credited into my bank/UPI account.</span>
+                <span>I confirm that ₹{selectedOrder.pricePaid} INR has been verified &amp; credited into my bank/UPI account.</span>
               </label>
 
               <div className="admin-form" style={{ gap: '14px', marginTop: '16px' }}>
-                <h4 style={{ fontSize: '0.95rem', fontWeight: 700 }}>Card Credentials Release Form</h4>
-                <p style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', marginTop: '-8px' }}>
-                  Please enter or verify the actual credentials to be released to this user. We have pre-filled them with auto-generated safe values.
+                <h4 style={{ fontSize: '0.95rem', fontWeight: 700 }}>Excel Leads Release</h4>
+                <p style={{ fontSize: '0.82rem', color: 'var(--text-secondary)', marginTop: '-8px', lineHeight: 1.4 }}>
+                  Approving this order will immediately unlock <strong>{(selectedOrder.productSnapshot?.recordsCount || 5000).toLocaleString()} unmasked buyer records</strong> in the customer’s dashboard and send an Excel (.xlsx) confirmation email.
                 </p>
 
-                <div className="admin-form-group">
-                  <label className="admin-form-label">Released Card Number</label>
-                  <input
-                    type="text"
-                    className="admin-form-input"
-                    value={verifyForm.number}
-                    onChange={(e) => setVerifyForm({ ...verifyForm, number: e.target.value })}
-                    required
-                  />
-                </div>
-
-                <div className="admin-form-row">
-                  <div className="admin-form-group">
-                    <label className="admin-form-label">Cardholder Name</label>
-                    <input
-                      type="text"
-                      className="admin-form-input"
-                      placeholder="e.g. AARAV SHARMA"
-                      value={verifyForm.cardHolder}
-                      onChange={(e) => setVerifyForm({ ...verifyForm, cardHolder: e.target.value })}
-                      required
-                    />
-                  </div>
-                  <div className="admin-form-group">
-                    <label className="admin-form-label">Date of Birth (DOB)</label>
-                    <input
-                      type="text"
-                      className="admin-form-input"
-                      placeholder="e.g. 15/07/1994"
-                      value={verifyForm.dob}
-                      onChange={(e) => setVerifyForm({ ...verifyForm, dob: e.target.value })}
-                      required
-                    />
-                  </div>
-                </div>
-
-                <div className="admin-form-row">
-                  <div className="admin-form-group">
-                    <label className="admin-form-label">Expiry (MM/YY)</label>
-                    <input
-                      type="text"
-                      className="admin-form-input"
-                      placeholder="e.g. 12/28"
-                      value={verifyForm.expiry}
-                      onChange={(e) => setVerifyForm({ ...verifyForm, expiry: e.target.value })}
-                      required
-                    />
-                  </div>
-                  <div className="admin-form-group">
-                    <label className="admin-form-label">CVV</label>
-                    <input
-                      type="text"
-                      className="admin-form-input"
-                      placeholder="e.g. 981"
-                      value={verifyForm.cvv}
-                      onChange={(e) => setVerifyForm({ ...verifyForm, cvv: e.target.value })}
-                      required
-                    />
-                  </div>
-                  <div className="admin-form-group">
-                    <label className="admin-form-label">ATM PIN</label>
-                    <input
-                      type="text"
-                      className="admin-form-input"
-                      placeholder="e.g. 1234"
-                      value={verifyForm.atmPin}
-                      onChange={(e) => setVerifyForm({ ...verifyForm, atmPin: e.target.value })}
-                      required
-                    />
+                <div style={{ background: 'rgba(16, 185, 129, 0.08)', border: '1px solid rgba(16, 185, 129, 0.25)', borderRadius: '10px', padding: '12px 16px', display: 'flex', alignItems: 'center', gap: '10px' }}>
+                  <CheckCircle size={20} color="#10b981" />
+                  <div style={{ fontSize: '0.82rem', color: '#047857' }}>
+                    Customer receives clean spreadsheet columns: Name, Mobile, Address, City, State, PIN, and Ordered Item.
                   </div>
                 </div>
 
@@ -2139,9 +2371,9 @@ export default function AdminDashboard() {
                     className="btn-primary" 
                     style={{ background: 'var(--success)' }} 
                     onClick={handleApproveOrder}
-                    disabled={submitLoading || !bankVerified || !verifyForm.number || !verifyForm.expiry || !verifyForm.cvv}
+                    disabled={submitLoading || !bankVerified}
                   >
-                    {submitLoading ? <Loader2 size={16} className="animate-spin" /> : 'Confirm & Release'}
+                    {submitLoading ? <Loader2 size={16} className="animate-spin" /> : 'Confirm & Release Leads'}
                   </button>
                 </div>
               </div>
@@ -2324,6 +2556,59 @@ export default function AdminDashboard() {
           </div>
         </div>
       )}
+
+      {/* 4. MOBILE BOTTOM APP BAR NAVIGATION */}
+      <nav className="admin-mobile-bottom-nav">
+        <button
+          type="button"
+          onClick={() => setActiveTab('dashboard')}
+          className={`admin-bottom-tab ${activeTab === 'dashboard' ? 'active' : ''}`}
+        >
+          <LayoutDashboard size={20} />
+          <span>Overview</span>
+        </button>
+
+        <button
+          type="button"
+          onClick={() => setActiveTab('orders')}
+          className={`admin-bottom-tab ${activeTab === 'orders' ? 'active' : ''}`}
+        >
+          <div className="tab-icon-wrap">
+            <ShoppingBag size={20} />
+            {stats.pendingOrders > 0 && (
+              <span className="tab-pending-badge">{stats.pendingOrders}</span>
+            )}
+          </div>
+          <span>Orders</span>
+        </button>
+
+        <button
+          type="button"
+          onClick={() => setActiveTab('cards')}
+          className={`admin-bottom-tab ${activeTab === 'cards' ? 'active' : ''}`}
+        >
+          <Layers size={20} />
+          <span>Catalog</span>
+        </button>
+
+        <button
+          type="button"
+          onClick={() => setActiveTab('users')}
+          className={`admin-bottom-tab ${activeTab === 'users' ? 'active' : ''}`}
+        >
+          <Users size={20} />
+          <span>Users</span>
+        </button>
+
+        <button
+          type="button"
+          onClick={() => setActiveTab('settings')}
+          className={`admin-bottom-tab ${activeTab === 'settings' ? 'active' : ''}`}
+        >
+          <Sliders size={20} />
+          <span>Settings</span>
+        </button>
+      </nav>
 
       {/* Toast popup */}
       {toast && (

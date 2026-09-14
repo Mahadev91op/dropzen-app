@@ -11,10 +11,19 @@ const OrderSchema = new mongoose.Schema({
     ref: 'User',
     required: true,
   },
+  productId: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'Product',
+    required: false,
+  },
   cardId: {
     type: mongoose.Schema.Types.ObjectId,
     ref: 'Card',
-    required: true,
+    required: false,
+  },
+  quantity: {
+    type: Number,
+    default: 10,
   },
   status: {
     type: String,
@@ -49,11 +58,19 @@ const OrderSchema = new mongoose.Schema({
     default: '',
     trim: true,
   },
-  releasedCardDetails: {
+  excelData: {
+    type: mongoose.Schema.Types.Mixed,
+    default: [],
+  },
+  productSnapshot: {
     type: mongoose.Schema.Types.Mixed,
     default: {},
   },
   cardSnapshot: {
+    type: mongoose.Schema.Types.Mixed,
+    default: {},
+  },
+  releasedCardDetails: {
     type: mongoose.Schema.Types.Mixed,
     default: {},
   },

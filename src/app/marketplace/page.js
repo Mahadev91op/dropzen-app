@@ -5,24 +5,40 @@ import { useRouter } from 'next/navigation';
 import { useAuth } from '@/context/AuthContext';
 import Navbar from '@/components/Navbar';
 import AuthModals from '@/components/AuthModals';
-import CreditCard from '@/components/CreditCard';
 import PaymentModal from '@/components/PaymentModal';
 import {
   Shield,
   ShoppingBag,
-  Lock,
-  ArrowRight,
-  CreditCard as CardIcon,
   Sparkles,
-  Info,
   Search,
   X,
   SlidersHorizontal,
-  ArrowLeft
+  ArrowLeft,
+  ArrowRight,
+  TrendingUp,
+  Clock,
+  CheckCircle2,
+  FileSpreadsheet,
+  Eye,
+  Star,
+  Zap,
+  Phone,
+  MapPin,
+  Check,
+  AlertCircle
 } from 'lucide-react';
 
 import confetti from 'canvas-confetti';
 import './page.css';
+
+const CATEGORIES = [
+  { id: 'all', label: 'All Bundles' },
+  { id: 'Home & Kitchen', label: 'Home & Kitchen' },
+  { id: 'High-Ticket Buyers', label: 'High-Ticket Buyers' },
+  { id: 'Fashion & Apparel', label: 'Fashion & Apparel' },
+  { id: 'Electronics & Gadgets', label: 'Electronics & Gadgets' },
+  { id: 'Beauty & Wellness', label: 'Beauty & Wellness' },
+];
 
 export default function MarketplacePage() {
   const router = useRouter();
@@ -32,54 +48,59 @@ export default function MarketplacePage() {
   const [authOpen, setAuthOpen] = useState(false);
   const [authType, setAuthType] = useState('signin');
 
-  // Marketplace states
-  const [cards, setCards] = useState([]);
-  const [selectedType, setSelectedType] = useState('all');
-  const [marketSearch, setMarketSearch] = useState('');
+  // Products state
+  const [products, setProducts] = useState([]);
+  const [selectedCategory, setSelectedCategory] = useState('all');
+  const [searchQuery, setSearchQuery] = useState('');
   const [sortBy, setSortBy] = useState('all');
-  const [loadingCards, setLoadingCards] = useState(true);
-  const [purchaseLoading, setPurchaseLoading] = useState(null);
+  const [loading, setLoading] = useState(true);
   const [notification, setNotification] = useState(null);
   const [dynamicSettings, setDynamicSettings] = useState(null);
-  const [paymentModalOpen, setPaymentModalOpen] = useState(false);
-  const [selectedPaymentCard, setSelectedPaymentCard] = useState(null);
 
-  const fetchCards = useCallback(async () => {
+  // Payment Modal state
+  const [paymentModalOpen, setPaymentModalOpen] = useState(false);
+  const [selectedProduct, setSelectedProduct] = useState(null);
+
+  // Sample Preview Modal state
+  const [previewProduct, setPreviewProduct] = useState(null);
+
+  const fetchProducts = useCallback(async () => {
     const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 7000);
+    const timeoutId = setTimeout(() => controller.abort(), 8000);
 
     try {
-      const res = await fetch('/api/cards', { 
+      const res = await fetch('/api/products', {
         cache: 'no-store',
-        signal: controller.signal 
+        signal: controller.signal,
       });
       clearTimeout(timeoutId);
       if (res.ok) {
         const data = await res.json();
-        if (data.success && Array.isArray(data.cards)) {
-          setCards(data.cards);
+        const list = data.products || data.cards || [];
+        if (Array.isArray(list) && list.length > 0) {
+          setProducts(list);
           try {
-            sessionStorage.setItem('cv_cards_cache', JSON.stringify(data.cards));
+            sessionStorage.setItem('dropzen_products_cache', JSON.stringify(list));
           } catch (e) {}
         }
       }
     } catch (error) {
-      console.error('Error fetching cards:', error);
+      console.error('Error fetching products:', error);
     } finally {
       clearTimeout(timeoutId);
-      setLoadingCards(false);
+      setLoading(false);
     }
   }, []);
 
   useEffect(() => {
     // Instant cache hydration
     try {
-      const saved = sessionStorage.getItem('cv_cards_cache');
+      const saved = sessionStorage.getItem('dropzen_products_cache');
       if (saved) {
         const parsed = JSON.parse(saved);
         if (Array.isArray(parsed) && parsed.length > 0) {
-          setCards(parsed);
-          setLoadingCards(false);
+          setProducts(parsed);
+          setLoading(false);
         }
       }
     } catch (e) {}
@@ -93,16 +114,12 @@ export default function MarketplacePage() {
       })
       .catch((err) => console.error('Error fetching settings:', err));
 
-    fetchCards();
-  }, [fetchCards]);
+    fetchProducts();
+  }, [fetchProducts]);
 
   const handleOpenAuth = (type) => {
     setAuthType(type);
     setAuthOpen(true);
-  };
-
-  const handleToggleAuthType = (type) => {
-    setAuthType(type);
   };
 
   const showToast = (message, type = 'success') => {
@@ -110,29 +127,37 @@ export default function MarketplacePage() {
     setTimeout(() => setNotification(null), 5000);
   };
 
-  const handleBuyCard = (card) => {
+  const handleBuyProduct = (product) => {
     if (!user) {
-      showToast('Please sign in or register to purchase cards', 'warning');
+      showToast('Please sign in or create an account to purchase leads', 'warning');
       handleOpenAuth('signin');
       return;
     }
-    setSelectedPaymentCard(card);
+    setSelectedProduct(product);
     setPaymentModalOpen(true);
   };
 
   const handleConfirmPayment = async (paymentData) => {
-    if (!selectedPaymentCard) return;
+    if (!selectedProduct) return;
 
     try {
       const payload =
         typeof paymentData === 'string'
-          ? { cardId: selectedPaymentCard._id, utrNumber: paymentData }
-          : { cardId: selectedPaymentCard._id, ...paymentData };
+          ? {
+              productId: selectedProduct._id,
+              cardId: selectedProduct._id,
+              utrNumber: paymentData,
+            }
+          : {
+              productId: selectedProduct._id,
+              cardId: selectedProduct._id,
+              ...paymentData,
+            };
 
       const res = await fetch('/api/orders', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(payload)
+        body: JSON.stringify(payload),
       });
       const data = await res.json();
 
@@ -140,16 +165,16 @@ export default function MarketplacePage() {
         confetti({
           particleCount: 150,
           spread: 80,
-          origin: { y: 0.6 }
+          origin: { y: 0.6 },
         });
 
-        showToast('Payment submitted! Admin will verify and release details shortly.', 'success');
+        showToast('Payment submitted! Admin is verifying and your Excel sheet will unlock shortly.', 'success');
         setPaymentModalOpen(false);
-        fetchCards();
+        setPreviewProduct(null);
 
         setTimeout(() => {
           router.push('/profile/orders');
-        }, 2200);
+        }, 1800);
       } else {
         throw new Error(data.error || 'Failed to place order');
       }
@@ -158,39 +183,38 @@ export default function MarketplacePage() {
     }
   };
 
-  // Live brand counts
-  const totalCardsCount = cards.length;
-  const visaCount = cards.filter((c) => c.type?.toLowerCase() === 'visa').length;
-  const mcCount = cards.filter((c) => c.type?.toLowerCase() === 'mastercard').length;
-  const rupayCount = cards.filter((c) => c.type?.toLowerCase() === 'rupay').length;
+  // Filter and sort products
+  const filteredProducts = products
+    .filter((product) => {
+      const matchesCategory =
+        selectedCategory === 'all' ||
+        (product.category && product.category.toLowerCase() === selectedCategory.toLowerCase());
+      if (!matchesCategory) return false;
 
-  // Filter cards by selected brand, search query, and sort order
-  const filteredCards = cards
-    .filter((card) => {
-      const matchesBrand =
-        selectedType === 'all' || card.type?.toLowerCase() === selectedType.toLowerCase();
-      if (!matchesBrand) return false;
-      if (!marketSearch.trim()) return true;
-      const q = marketSearch.toLowerCase().trim();
+      if (!searchQuery.trim()) return true;
+      const q = searchQuery.toLowerCase().trim();
       return (
-        (card.name && card.name.toLowerCase().includes(q)) ||
-        (card.cardHolder && card.cardHolder.toLowerCase().includes(q)) ||
-        (card.limit && card.limit.toLowerCase().includes(q)) ||
-        (card.type && card.type.toLowerCase().includes(q))
+        (product.title && product.title.toLowerCase().includes(q)) ||
+        (product.category && product.category.toLowerCase().includes(q)) ||
+        (product.description && product.description.toLowerCase().includes(q))
       );
     })
     .sort((a, b) => {
-      if (sortBy === 'fee-asc') return (a.entryFee || 0) - (b.entryFee || 0);
-      if (sortBy === 'fee-desc') return (b.entryFee || 0) - (a.entryFee || 0);
-      return 0;
+      if (sortBy === 'price-low') return (a.price || 0) - (b.price || 0);
+      if (sortBy === 'price-high') return (b.price || 0) - (a.price || 0);
+      if (sortBy === 'records') return (b.recordsCount || 0) - (a.recordsCount || 0);
+      if (sortBy === 'rating') return (b.rating || 0) - (a.rating || 0);
+      return 0; // Default
     });
+
+  const totalLeadsAvailable = products.reduce((acc, p) => acc + (p.recordsCount || 5000), 0);
 
   return (
     <>
       <Navbar onOpenAuth={handleOpenAuth} />
 
       <main className="marketplace-page-wrapper">
-        {/* Marketplace Hero / Header */}
+        {/* Marketplace Hero Section */}
         <section className="marketplace-hero-section">
           <div className="container">
             <div className="marketplace-breadcrumb">
@@ -199,19 +223,19 @@ export default function MarketplacePage() {
               </a>
               <span className="live-status-pill">
                 <span className="live-pulse"></span>
-                <span>{totalCardsCount} Active Cards Online</span>
+                <span>{totalLeadsAvailable.toLocaleString()}+ Pre-Verified Buyer Leads Online</span>
               </span>
             </div>
 
             <div className="marketplace-header-content">
               <span className="marketplace-badge">
-                <Sparkles size={16} /> Complete Virtual Cards Catalog
+                <Sparkles size={16} /> High-Converting Dropshipping Leads
               </span>
               <h1 className="marketplace-main-title">
-                CardVault <span>Marketplace</span>
+                Products &amp; Leads <span>Marketplace</span>
               </h1>
               <p className="marketplace-description">
-                Explore all {totalCardsCount}+ active virtual cards with custom spending limits, anonymous checkout, and complete 7-factor banking credentials (Cardholder Name, DOB, 16-digit Card Number, Expiry, CVV, and ATM PIN).
+                Browse pre-verified PAN-India COD customer orders who bought viral trending products. Download clean Excel (.xlsx) spreadsheets instantly with 1-click verification for Meesho, Shopify &amp; COD reselling.
               </p>
             </div>
           </div>
@@ -227,15 +251,15 @@ export default function MarketplacePage() {
                 <input
                   type="text"
                   className="market-search-input"
-                  placeholder="Search 50+ cards by bank, name, holder or limit..."
-                  value={marketSearch}
-                  onChange={(e) => setMarketSearch(e.target.value)}
+                  placeholder="Search leads by niche, product, or keywords..."
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
                 />
-                {marketSearch && (
+                {searchQuery && (
                   <button
                     type="button"
                     className="search-clear-btn"
-                    onClick={() => setMarketSearch('')}
+                    onClick={() => setSearchQuery('')}
                     aria-label="Clear search"
                   >
                     <X size={15} />
@@ -250,186 +274,213 @@ export default function MarketplacePage() {
                   value={sortBy}
                   onChange={(e) => setSortBy(e.target.value)}
                 >
-                  <option value="all">Sort: Featured</option>
-                  <option value="fee-asc">Entry Fee: Low to High</option>
-                  <option value="fee-desc">Entry Fee: High to Low</option>
+                  <option value="all">Sort: Most Popular</option>
+                  <option value="price-low">Price: Low to High</option>
+                  <option value="price-high">Price: High to Low</option>
+                  <option value="records">Highest Records</option>
+                  <option value="rating">Top Rated</option>
                 </select>
               </div>
             </div>
 
-            {/* Brand Filter Tabs with Live Counts */}
+            {/* Category Filter Tabs */}
             <div className="market-tabs">
-              <button
-                onClick={() => setSelectedType('all')}
-                className={`tab-btn ${selectedType === 'all' ? 'active' : ''}`}
-              >
-                <Sparkles size={16} />
-                All Cards <span className="tab-count-badge">{totalCardsCount}</span>
-              </button>
-              <button
-                onClick={() => setSelectedType('visa')}
-                className={`tab-btn ${selectedType === 'visa' ? 'active' : ''}`}
-              >
-                <CardIcon size={16} />
-                Visa <span className="tab-count-badge">{visaCount}</span>
-              </button>
-              <button
-                onClick={() => setSelectedType('mastercard')}
-                className={`tab-btn ${selectedType === 'mastercard' ? 'active' : ''}`}
-              >
-                <CardIcon size={16} />
-                Mastercard <span className="tab-count-badge">{mcCount}</span>
-              </button>
-              <button
-                onClick={() => setSelectedType('rupay')}
-                className={`tab-btn ${selectedType === 'rupay' ? 'active' : ''}`}
-              >
-                <CardIcon size={16} />
-                RuPay <span className="tab-count-badge">{rupayCount}</span>
-              </button>
+              {CATEGORIES.map((cat) => {
+                const count =
+                  cat.id === 'all'
+                    ? products.length
+                    : products.filter(
+                        (p) => p.category && p.category.toLowerCase() === cat.id.toLowerCase()
+                      ).length;
+                return (
+                  <button
+                    key={cat.id}
+                    onClick={() => setSelectedCategory(cat.id)}
+                    className={`tab-btn ${selectedCategory === cat.id ? 'active' : ''}`}
+                  >
+                    {cat.label} <span className="tab-count-badge">{count}</span>
+                  </button>
+                );
+              })}
             </div>
 
-            {/* Cards Grid */}
-            {loadingCards ? (
+            {/* Products Grid */}
+            {loading ? (
               <div style={{ textAlign: 'center', padding: '60px', color: 'var(--text-secondary)' }}>
                 <div
                   className="loading-spinner"
                   style={{
-                    border: '4px solid rgba(79, 70, 229, 0.1)',
+                    border: '4px solid rgba(99, 102, 241, 0.1)',
                     width: '44px',
                     height: '44px',
                     borderRadius: '50%',
                     borderLeftColor: 'var(--primary)',
                     animation: 'spin 1s linear infinite',
-                    margin: '0 auto 16px auto'
+                    margin: '0 auto 16px auto',
                   }}
                 ></div>
-                Loading full cards marketplace...
+                Loading verified dropshipping leads catalog...
               </div>
             ) : (
-              <div className="cards-grid">
-                {filteredCards.length > 0 ? (
-                  filteredCards.map((card) => (
-                    <div className="card-showcase-box" key={card._id}>
-                      {/* Visual Card Graphic */}
-                      <div className="card-visual-wrapper">
-                        <CreditCard
-                          type={card.type}
-                          name={card.name}
-                          cardNumber={card.cardNumber}
-                          cvv={card.cvv}
-                          cardHolder={card.cardHolder}
-                          expiry={card.expiry}
-                          gradientStart={card.gradientStart}
-                          gradientEnd={card.gradientEnd}
-                          isMasked={true}
-                        />
-                      </div>
+              <div className="products-leads-grid">
+                {filteredProducts.length > 0 ? (
+                  filteredProducts.map((product) => {
+                    const wholesale = product.meeshoCost || 199;
+                    const retail = product.resellPrice || 899;
+                    const estProfit = retail - wholesale;
+                    const records = product.recordsCount || 5000;
 
-                      {/* 7-Factor Specifications */}
-                      <div className="card-specs">
-                        <div className="spec-info">
-                          <span className="spec-name">Cardholder</span>
-                          <span className="spec-value font-bold" title={card.cardHolder}>
-                            {card.cardHolder || 'CARDHOLDER'}
-                          </span>
-                        </div>
-                        <div className="spec-info">
-                          <span className="spec-name">Spend Limit</span>
-                          <span className="spec-value spec-limit-val">{card.limit}</span>
-                        </div>
-                        <div className="spec-info">
-                          <span className="spec-name">Date of Birth (DOB)</span>
-                          <span className="spec-value spec-masked-pill">
-                            <Lock size={10} /> Unlocks on Order
-                          </span>
-                        </div>
-                        <div className="spec-info">
-                          <span className="spec-name">ATM PIN</span>
-                          <span className="spec-value spec-masked-pill">
-                            <Lock size={10} /> Unlocks on Order
-                          </span>
-                        </div>
-                        <div className="spec-info">
-                          <span className="spec-name">Card Number</span>
-                          <span className="spec-value" style={{ fontFamily: 'monospace' }}>
-                            •••• {card.cardNumber?.slice(-4) || '••••'}
-                          </span>
-                        </div>
-                        <div className="spec-info">
-                          <span className="spec-name">Validity</span>
-                          <span className="spec-value">{card.expiry}</span>
-                        </div>
-                        <div className="spec-info">
-                          <span className="spec-name">Refunds</span>
-                          <span className="spec-value">{card.refund}</span>
-                        </div>
-                        <div className="spec-info">
-                          <span className="spec-name">Delivery</span>
-                          <span className="spec-value">{card.delivery}</span>
-                        </div>
-                        <div className="spec-info">
-                          <span className="spec-name">Quantity Left</span>
-                          <span
-                            className="spec-value"
-                            style={{ color: card.qty < 10 ? 'var(--accent)' : 'inherit' }}
-                          >
-                            {card.qty} units
-                          </span>
-                        </div>
-                        <div className="spec-info">
-                          <span className="spec-name">Billing Address</span>
-                          <span className="spec-value">US / International</span>
-                        </div>
-                      </div>
-
-                      {/* Buy Action */}
-                      <div className="card-buy-action">
-                        <div className="card-price-info">
-                          <span className="price-label">Entry Fee</span>
-                          <span className="price-val">₹{card.entryFee}</span>
-                        </div>
-                        <button
-                          className="btn-buy"
-                          onClick={() => handleBuyCard(card)}
-                          disabled={purchaseLoading === card._id || card.qty <= 0}
-                        >
-                          {purchaseLoading === card._id ? (
-                            'Ordering...'
-                          ) : card.qty <= 0 ? (
-                            'Sold Out'
+                    return (
+                      <div className="product-lead-card" key={product._id}>
+                        {/* Image Header with Badges */}
+                        <div className="product-lead-image-wrap">
+                          {product.image ? (
+                            /* eslint-disable-next-line @next/next/no-img-element */
+                            <img
+                              src={product.image}
+                              alt={product.title}
+                              className="product-lead-img"
+                              loading="lazy"
+                            />
                           ) : (
-                            <>
-                              Buy Card <ArrowRight size={16} />
-                            </>
+                            <div className="product-lead-placeholder-img">
+                              <ShoppingBag size={48} color="#818cf8" />
+                            </div>
                           )}
-                        </button>
+                          <div className="lead-badge-top-left">
+                            <span className="badge-tag">{product.badge || '🔥 Trending'}</span>
+                          </div>
+                          <div className="lead-badge-top-right">
+                            <span className="category-pill">{product.category}</span>
+                          </div>
+                        </div>
+
+                        {/* Body Details */}
+                        <div className="product-lead-body">
+                          <div className="product-rating-row">
+                            <div className="stars-wrap">
+                              <Star size={14} fill="#f59e0b" color="#f59e0b" />
+                              <span className="rating-val">{product.rating || 4.9}</span>
+                              <span className="reviews-cnt">({product.reviewsCount || 150}+ ratings)</span>
+                            </div>
+                            <span className="freshness-tag">
+                              <Clock size={12} /> {product.freshness || 'Updated Sept 2026'}
+                            </span>
+                          </div>
+
+                          <h3 className="product-lead-title" title={product.title}>
+                            {product.title}
+                          </h3>
+
+                          {product.description && (
+                            <p className="product-lead-desc">{product.description}</p>
+                          )}
+
+                          {/* Records Count & Delivery Meta */}
+                          <div className="lead-meta-pill-strip">
+                            <span className="records-pill">
+                              <FileSpreadsheet size={13} />
+                              <strong>{records.toLocaleString()}</strong> Verified Leads
+                            </span>
+                            <span className="delivery-pill">
+                              <Zap size={13} /> {product.deliveryTime || 'Instant 5-Min Delivery'}
+                            </span>
+                          </div>
+
+                          {/* Resell Margin Breakdown */}
+                          <div className="margin-calculator-box">
+                            <div className="margin-col">
+                              <span className="margin-lbl">Meesho Wholesale</span>
+                              <span className="margin-val">₹{wholesale}</span>
+                            </div>
+                            <span className="margin-divider">→</span>
+                            <div className="margin-col">
+                              <span className="margin-lbl">Resell Price</span>
+                              <span className="margin-val">₹{retail}</span>
+                            </div>
+                            <span className="margin-divider">=</span>
+                            <div className="margin-col highlight-margin">
+                              <span className="margin-lbl">Net Profit / Order</span>
+                              <span className="margin-profit-val">+₹{estProfit}</span>
+                            </div>
+                          </div>
+
+                          {/* Highlight Features */}
+                          <ul className="lead-features-list">
+                            {(product.highlightFeatures && product.highlightFeatures.length > 0
+                              ? product.highlightFeatures.slice(0, 3)
+                              : [
+                                  '100% Verified Indian Mobile & WhatsApp Numbers',
+                                  'Pre-Qualified COD Buyers (Low RTO < 11.4%)',
+                                  'Clean Excel (.xlsx) Download with Customer Names & PINs',
+                                ]
+                            ).map((feat, idx) => (
+                              <li key={idx}>
+                                <CheckCircle2 size={13} className="check-icon" />
+                                <span>{feat}</span>
+                              </li>
+                            ))}
+                          </ul>
+                        </div>
+
+                        {/* Card Footer Actions */}
+                        <div className="product-lead-footer">
+                          <button
+                            type="button"
+                            className="btn-preview-sample"
+                            onClick={() => setPreviewProduct(product)}
+                            title="Preview sample Excel leads for this product"
+                          >
+                            <Eye size={14} /> Preview Sample Leads
+                          </button>
+
+                          <div className="pricing-and-buy-row">
+                            <div className="lead-pricing-block">
+                              <div className="lead-price-now">₹{product.price}</div>
+                              {product.originalPrice && product.originalPrice > product.price && (
+                                <div className="lead-price-strikethrough">
+                                  <span className="old-price">₹{product.originalPrice}</span>
+                                  <span className="discount-tag">{product.discount || '50% OFF'}</span>
+                                </div>
+                              )}
+                            </div>
+
+                            <button
+                              type="button"
+                              className="btn-buy-leads"
+                              onClick={() => handleBuyProduct(product)}
+                            >
+                              <span>Buy Leads</span>
+                              <ArrowRight size={15} />
+                            </button>
+                          </div>
+                        </div>
                       </div>
-                    </div>
-                  ))
+                    );
+                  })
                 ) : (
                   <div className="market-empty-search">
                     <ShoppingBag size={40} />
-                    <h3>{cards.length === 0 ? 'Cards Loading Notice' : 'No Virtual Cards Found'}</h3>
+                    <h3>{products.length === 0 ? 'Loading Leads Bundles' : 'No Bundles Found'}</h3>
                     <p>
-                      {cards.length === 0
-                        ? 'Could not load cards or network is slow. Tap Retry to reload the cards.'
-                        : `No cards matched your query "${marketSearch}". Try adjusting your search or switching brands.`}
+                      {products.length === 0
+                        ? 'Connecting to database or refreshing catalog. Please wait or tap retry.'
+                        : `No dropshipping leads matched "${searchQuery}". Try a different search term or category.`}
                     </p>
                     <button
                       type="button"
                       className="btn-secondary"
                       onClick={() => {
-                        if (cards.length === 0) {
-                          fetchCards();
+                        if (products.length === 0) {
+                          fetchProducts();
                         } else {
-                          setMarketSearch('');
-                          setSelectedType('all');
+                          setSearchQuery('');
+                          setSelectedCategory('all');
                         }
                       }}
                       style={{ marginTop: '12px' }}
                     >
-                      {cards.length === 0 ? 'Retry Loading Cards' : 'Reset Filters'}
+                      {products.length === 0 ? 'Retry Loading' : 'Reset Filters'}
                     </button>
                   </div>
                 )}
@@ -437,90 +488,175 @@ export default function MarketplacePage() {
             )}
           </div>
         </section>
-      </main>
 
-      {/* Footer */}
-      <footer className="footer" style={{ marginTop: '60px' }}>
-        <div className="container">
-          <div className="footer-bottom" style={{ borderTop: 'none', paddingTop: 0 }}>
-            <span className="footer-copy">
-              &copy; {new Date().getFullYear()} CardVault Inc. All rights reserved. Secure virtual card solutions.
-            </span>
-            <div className="footer-badges">
-              <div className="badge-item">
-                <Lock size={14} /> 256-Bit SSL Encryption
+        {/* Buyer Protection / Trust Strip */}
+        <section className="trust-guarantee-section">
+          <div className="container trust-grid">
+            <div className="trust-card">
+              <div className="trust-icon-box">
+                <FileSpreadsheet size={24} color="#818cf8" />
               </div>
-              <div className="badge-item">
-                <Shield size={14} /> PCI-DSS Compliant
+              <div>
+                <h4>Structured Excel (.xlsx) Delivery</h4>
+                <p>Clean spreadsheet formatted with Customer Name, Phone, Delivery Address, PIN, and Ordered Item.</p>
+              </div>
+            </div>
+            <div className="trust-card">
+              <div className="trust-icon-box">
+                <TrendingUp size={24} color="#34d399" />
+              </div>
+              <div>
+                <h4>Lowest RTO Delivery Rate</h4>
+                <p>Pre-screened genuine buyers with historical delivered status. Zero fake or bot phone numbers.</p>
+              </div>
+            </div>
+            <div className="trust-card">
+              <div className="trust-icon-box">
+                <Shield size={24} color="#38bdf8" />
+              </div>
+              <div>
+                <h4>5-10 Min Verification</h4>
+                <p>Instant UPI automated order tracking. Download your file directly from your profile dashboard.</p>
               </div>
             </div>
           </div>
-        </div>
-      </footer>
+        </section>
+      </main>
 
-      {/* Toast Notification */}
-      {notification && (
-        <div
-          style={{
-            position: 'fixed',
-            bottom: '24px',
-            right: '24px',
-            zIndex: 2000,
-            background:
-              notification.type === 'error'
-                ? 'var(--accent)'
-                : notification.type === 'warning'
-                ? 'var(--warning)'
-                : 'var(--success)',
-            color: 'white',
-            padding: '14px 24px',
-            borderRadius: '12px',
-            fontWeight: '700',
-            boxShadow: '0 10px 25px rgba(0,0,0,0.15)',
-            display: 'flex',
-            alignItems: 'center',
-            gap: '8px',
-            animation: 'modal-fade-in 0.3s ease'
-          }}
-        >
-          <Info size={18} />
-          {notification.message}
+      {/* Interactive Sample Leads Preview Modal */}
+      {previewProduct && (
+        <div className="sample-modal-overlay" onClick={() => setPreviewProduct(null)}>
+          <div className="sample-modal-box" onClick={(e) => e.stopPropagation()}>
+            <div className="sample-modal-header">
+              <div className="sample-header-info">
+                <span className="sample-modal-tag">Excel (.xlsx) Preview</span>
+                <h2>{previewProduct.title}</h2>
+                <p>
+                  Showing 5 sample verified customer order rows. Full unmasked mobile numbers, street addresses, and PIN codes unlock immediately upon order approval.
+                </p>
+              </div>
+              <button
+                type="button"
+                className="sample-close-btn"
+                onClick={() => setPreviewProduct(null)}
+                aria-label="Close modal"
+              >
+                <X size={20} />
+              </button>
+            </div>
+
+            <div className="sample-table-wrapper">
+              <table className="sample-excel-table">
+                <thead>
+                  <tr>
+                    <th>#</th>
+                    <th>Customer Name</th>
+                    <th>Mobile / WhatsApp</th>
+                    <th>City</th>
+                    <th>State</th>
+                    <th>Product</th>
+                    <th>Order Value</th>
+                    <th>Status</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {(previewProduct.sampleRows && previewProduct.sampleRows.length > 0
+                    ? previewProduct.sampleRows
+                    : [
+                        { id: 1, name: 'Aarav Mehta', phone: '+91 98201 •••••', city: 'Mumbai', state: 'Maharashtra', product: previewProduct.title, amount: '₹1,699', payment: 'COD Delivered' },
+                        { id: 2, name: 'Priya Sundaram', phone: '+91 98450 •••••', city: 'Bengaluru', state: 'Karnataka', product: previewProduct.title, amount: '₹2,150', payment: 'UPI Prepaid' },
+                        { id: 3, name: 'Rajesh Kulkarni', phone: '+91 94223 •••••', city: 'Pune', state: 'Maharashtra', product: previewProduct.title, amount: '₹1,399', payment: 'COD Delivered' },
+                        { id: 4, name: 'Kavita Singhal', phone: '+91 98112 •••••', city: 'Gurugram', state: 'Haryana', product: previewProduct.title, amount: '₹1,199', payment: 'Prepaid' },
+                        { id: 5, name: 'Vikas Choudhary', phone: '+91 94140 •••••', city: 'Jaipur', state: 'Rajasthan', product: previewProduct.title, amount: '₹899', payment: 'COD Delivered' },
+                      ]
+                  ).map((row, idx) => (
+                    <tr key={idx}>
+                      <td className="col-idx">{idx + 1}</td>
+                      <td className="col-name font-semibold">{row.name}</td>
+                      <td className="col-phone font-mono">{row.phone}</td>
+                      <td>{row.city}</td>
+                      <td>{row.state}</td>
+                      <td className="col-product truncate">{row.product || previewProduct.title}</td>
+                      <td className="col-amount">{row.amount || '₹1,499'}</td>
+                      <td>
+                        <span className="badge-delivered">{row.payment || 'COD Delivered'}</span>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+
+            <div className="sample-modal-footer">
+              <div className="sample-footer-summary">
+                <FileSpreadsheet size={18} className="text-primary" />
+                <span>
+                  Includes <strong>{(previewProduct.recordsCount || 5000).toLocaleString()}+ complete rows</strong> in clean .xlsx spreadsheet format.
+                </span>
+              </div>
+              <button
+                type="button"
+                className="btn-modal-buy"
+                onClick={() => {
+                  const prod = previewProduct;
+                  setPreviewProduct(null);
+                  handleBuyProduct(prod);
+                }}
+              >
+                <span>Unlock All Leads &bull; ₹{previewProduct.price}</span>
+                <ArrowRight size={16} />
+              </button>
+            </div>
+          </div>
         </div>
       )}
+
+      {/* Payment Modal */}
+      <PaymentModal
+        isOpen={paymentModalOpen}
+        onClose={() => setPaymentModalOpen(false)}
+        card={selectedProduct}
+        upiId={dynamicSettings?.upiId || 'mahadevtanti191@okaxis'}
+        usdToInrRate={dynamicSettings?.usdToInrRate || 83}
+        onSubmit={handleConfirmPayment}
+      />
 
       {/* Auth Modals */}
       <AuthModals
         isOpen={authOpen}
         type={authType}
         onClose={() => setAuthOpen(false)}
-        onToggleType={handleToggleAuthType}
+        onToggleType={setAuthType}
       />
 
-      {/* UPI Payment Modal */}
-      {paymentModalOpen && selectedPaymentCard && (
-        <PaymentModal
-          isOpen={paymentModalOpen}
-          onClose={() => {
-            setPaymentModalOpen(false);
-            setSelectedPaymentCard(null);
-          }}
-          card={selectedPaymentCard}
-          upiId={dynamicSettings?.upiId}
-          usdToInrRate={dynamicSettings?.usdToInrRate}
-          onSubmit={handleConfirmPayment}
-        />
+      {/* Global Toast Notification */}
+      {notification && (
+        <div className={`global-toast-banner ${notification.type}`}>
+          <div className="toast-inner">
+            <Check size={16} />
+            <span>{notification.message}</span>
+          </div>
+        </div>
       )}
 
-      <style jsx global>{`
-        @keyframes spin {
-          0% {
-            transform: rotate(0deg);
-          }
-          100% {
-            transform: rotate(360deg);
-          }
-        }
-      `}</style>
+      {/* Footer */}
+      <footer className="footer" style={{ marginTop: '60px' }}>
+        <div className="container">
+          <div className="footer-bottom" style={{ borderTop: 'none', paddingTop: 0 }}>
+            <span className="footer-copy">
+              &copy; {new Date().getFullYear()} Dropzen Inc. All rights reserved. High-converting Meesho &amp; COD dropshipping leads.
+            </span>
+            <div className="footer-badges">
+              <div className="badge-item">
+                <Shield size={14} /> 100% Pan-India Verified Leads
+              </div>
+              <div className="badge-item">
+                <Check size={14} /> Instant Excel (.xlsx) Download
+              </div>
+            </div>
+          </div>
+        </div>
+      </footer>
     </>
   );
 }

@@ -149,9 +149,9 @@ export default function AuthModals({ isOpen, type, onClose, onToggleType }) {
             </h2>
             <p className="modal-subtitle">
               {type === 'signin' 
-                ? 'Sign in to access your virtual card vault' 
+                ? 'Sign in to access your verified leads vault' 
                 : type === 'signup'
-                ? 'Join CardVault and buy virtual cards instantly'
+                ? 'Join Dropzen and download verified dropshipping leads instantly'
                 : 'Enter your registered details to set a new password'}
             </p>
           </div>

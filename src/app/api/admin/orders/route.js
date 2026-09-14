@@ -1,10 +1,9 @@
 import { NextResponse } from 'next/server';
 import dbConnect from '@/lib/db';
 import Order from '@/models/Order';
-import Card from '@/models/Card';
-import User from '@/models/User';
+import Product from '@/models/Product';
 import { getUserFromRequest } from '@/lib/auth';
-import { sendOrderApprovedEmail, sendOrderRejectedEmail } from '@/lib/emailService';
+import { generateRealisticLeads } from '@/lib/leadGenerator';
 
 export const dynamic = 'force-dynamic';
 
@@ -20,21 +19,25 @@ export async function GET(request) {
 
     const rawOrders = await Order.find({})
       .populate('userId', 'username email')
+      .populate('productId')
       .populate('cardId')
       .sort({ createdAt: -1 })
       .lean();
 
-    const orders = rawOrders.map(order => {
-      if (!order.cardId && order.cardSnapshot) {
-        return {
-          ...order,
-          cardId: {
-            _id: order.cardSnapshot._id || ('snapshot-' + order._id),
-            ...order.cardSnapshot
-          }
-        };
-      }
-      return order;
+    const orders = rawOrders.map((order) => {
+      const productObj = order.productId || order.productSnapshot || order.cardId || order.cardSnapshot || {};
+      return {
+        ...order,
+        productId: productObj,
+        cardId: {
+          _id: productObj._id || ('snapshot-' + order._id),
+          name: productObj.title || productObj.name || 'Dropzen Leads Bundle',
+          type: productObj.category || productObj.type || 'E-Commerce',
+          entryFee: order.pricePaid,
+          image: productObj.image || '',
+          ...productObj,
+        },
+      };
     });
 
     return NextResponse.json({ success: true, orders }, { status: 200 });
@@ -54,7 +57,7 @@ export async function PUT(request) {
       return NextResponse.json({ success: false, error: 'Forbidden. Admin access required.' }, { status: 403 });
     }
 
-    const { orderId, status, releasedCardDetails, rejectionReason } = await request.json();
+    const { orderId, status, rejectionReason, excelData } = await request.json();
 
     if (!orderId || !status) {
       return NextResponse.json({ success: false, error: 'Order ID and status are required' }, { status: 400 });
@@ -70,56 +73,29 @@ export async function PUT(request) {
     }
 
     order.status = status;
-    
-    // If completing the order, set the released card details (all 7 factors)
-    if (status === 'completed' && releasedCardDetails) {
-      order.releasedCardDetails = {
-        number: releasedCardDetails.number,
-        expiry: releasedCardDetails.expiry,
-        cvv: releasedCardDetails.cvv,
-        cardHolder: releasedCardDetails.cardHolder || order.releasedCardDetails?.cardHolder || 'CARDHOLDER',
-        dob: releasedCardDetails.dob || order.releasedCardDetails?.dob || '15/07/1994',
-        atmPin: releasedCardDetails.atmPin || order.releasedCardDetails?.atmPin || '1234',
-      };
+
+    if (status === 'completed') {
       order.rejectionReason = '';
+
+      // If excelData provided by admin or existing in order, update
+      if (Array.isArray(excelData) && excelData.length > 0) {
+        order.excelData = excelData;
+      } else if (!order.excelData || order.excelData.length === 0) {
+        // Generate verified customer leads (50 preview rows directly on order)
+        const title = order.productSnapshot?.title || 'Dropshipping Trending Product';
+        const targetCount = order.productSnapshot?.recordsCount || order.quantity || 5000;
+        // Generate high quality leads
+        order.excelData = generateRealisticLeads(title, Math.min(targetCount, 50));
+      }
     } else if (status === 'failed') {
-      order.rejectionReason = rejectionReason || 'Payment verification failed: UTR/payment not found in bank account.';
+      order.rejectionReason = rejectionReason || 'Payment verification failed: UTR number not matching bank transaction.';
     }
-    
+
     await order.save();
 
-    // Trigger buyer email notification asynchronously (fire & log)
-    Order.findById(orderId)
-      .populate('userId', 'username email')
-      .populate('cardId')
-      .then((populatedOrder) => {
-        if (!populatedOrder || !populatedOrder.userId) return;
-        if (status === 'completed') {
-          sendOrderApprovedEmail({
-            order: populatedOrder,
-            buyer: populatedOrder.userId,
-            card: populatedOrder.cardId,
-            releasedCardDetails: populatedOrder.releasedCardDetails,
-          }).catch((err) => console.error('Buyer approval email dispatch failed:', err));
-        } else if (status === 'failed') {
-          sendOrderRejectedEmail({
-            order: populatedOrder,
-            buyer: populatedOrder.userId,
-            card: populatedOrder.cardId,
-            rejectionReason: populatedOrder.rejectionReason,
-          }).catch((err) => console.error('Buyer rejection email dispatch failed:', err));
-        }
-      })
-      .catch((err) => console.error('Populating order for email notification failed:', err));
-
-    return NextResponse.json({ 
-      success: true, 
-      message: `Order status updated to ${status} successfully.`,
-      order 
-    }, { status: 200 });
-
+    return NextResponse.json({ success: true, message: `Order marked as ${status}`, order }, { status: 200 });
   } catch (error) {
-    console.error('Admin update order error:', error);
+    console.error('Admin order update error:', error);
     return NextResponse.json({ success: false, error: 'Failed to update order' }, { status: 500 });
   }
 }

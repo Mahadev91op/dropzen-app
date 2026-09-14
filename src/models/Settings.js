@@ -8,15 +8,15 @@ if (mongoose.models && mongoose.models.Settings) {
 const SettingsSchema = new mongoose.Schema({
   telegramLink: {
     type: String,
-    default: 'https://t.me/cardvault_admin',
+    default: 'https://t.me/dropzen_support',
   },
   instagramLink: {
     type: String,
-    default: 'https://instagram.com/cardvault_admin',
+    default: 'https://instagram.com/dropzen_official',
   },
   announcementText: {
     type: String,
-    default: 'Welcome to CardVault! Buy premium virtual cards instantly.',
+    default: 'Welcome to Dropzen! Verified Meesho & COD Dropshipping Customer Leads delivered in Excel spreadsheets.',
   },
   announcementActive: {
     type: Boolean,

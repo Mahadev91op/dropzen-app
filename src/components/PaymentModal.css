@@ -890,3 +890,79 @@
   background: rgba(244, 63, 94, 0.08);
 }
 
+/* ========================================================
+   PAYMENT MODAL MOBILE APP STYLING (BOTTOM SHEET)
+   ======================================================== */
+@media (max-width: 640px) {
+  .payment-modal-overlay {
+    align-items: flex-end !important;
+    padding: 0 !important;
+  }
+
+  .payment-modal-container {
+    width: 100% !important;
+    max-width: 100% !important;
+    border-radius: 24px 24px 0 0 !important;
+    max-height: 92vh !important;
+    margin: 0 !important;
+    border-bottom: none !important;
+    animation: pm-mobile-sheet 0.3s cubic-bezier(0.16, 1, 0.3, 1) !important;
+  }
+
+  @keyframes pm-mobile-sheet {
+    from { transform: translateY(100%); }
+    to { transform: translateY(0); }
+  }
+
+  .payment-modal-header {
+    padding: 16px 18px !important;
+  }
+
+  .payment-pricing-banner {
+    padding: 12px 18px !important;
+  }
+
+  .payment-modal-body {
+    padding: 16px !important;
+  }
+
+  .qr-code-box {
+    padding: 12px !important;
+  }
+
+  .qr-code-box svg,
+  .qr-code-box img {
+    max-width: 175px !important;
+    height: auto !important;
+  }
+
+  .payment-app-grid {
+    grid-template-columns: repeat(4, 1fr) !important;
+    gap: 8px !important;
+  }
+
+  .app-tile {
+    padding: 8px 4px !important;
+  }
+
+  .app-tile span {
+    font-size: 0.68rem !important;
+  }
+
+  .payment-modal-footer {
+    padding: 14px 18px !important;
+    position: sticky !important;
+    bottom: 0 !important;
+    background: var(--bg-primary) !important;
+    border-top: 1px solid var(--border-color) !important;
+    z-index: 10 !important;
+    box-shadow: 0 -4px 16px rgba(0, 0, 0, 0.05) !important;
+  }
+
+  .submit-payment-btn {
+    padding: 14px 20px !important;
+    font-size: 0.95rem !important;
+    border-radius: 12px !important;
+  }
+}
+

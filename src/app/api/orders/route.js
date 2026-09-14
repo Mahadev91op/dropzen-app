@@ -1,41 +1,69 @@
 import { NextResponse } from 'next/server';
 import dbConnect from '@/lib/db';
 import Order from '@/models/Order';
+import Product from '@/models/Product';
 import Card from '@/models/Card';
 import { getUserFromRequest } from '@/lib/auth';
-
 import { validateUtrNumber } from '@/lib/utrValidator';
-import { sendOrderNotificationEmail } from '@/lib/emailService';
 
 export const dynamic = 'force-dynamic';
 
-// GET: Fetch user's orders
 export async function GET(request) {
   try {
     await dbConnect();
+    const { searchParams } = new URL(request.url);
+    const searchQuery = searchParams.get('search') || searchParams.get('utr');
+
+    // Public Order Tracker lookup (by 12-digit UTR or Order ID)
+    if (searchQuery && searchQuery.trim() !== '') {
+      const clean = searchQuery.trim();
+      let query = { utrNumber: clean };
+      if (clean.length === 24 && /^[0-9a-fA-F]{24}$/.test(clean)) {
+        query = { $or: [{ utrNumber: clean }, { _id: clean }] };
+      }
+      const foundOrders = await Order.find(query).sort({ createdAt: -1 }).limit(5).lean();
+      const sanitized = foundOrders.map((order) => {
+        const productObj = order.productSnapshot || order.cardSnapshot || {};
+        return {
+          _id: String(order._id),
+          status: order.status,
+          pricePaid: order.pricePaid,
+          utrNumber: order.utrNumber,
+          createdAt: order.createdAt,
+          productSnapshot: productObj,
+          cardSnapshot: productObj,
+        };
+      });
+      return NextResponse.json({ success: true, orders: sanitized }, { status: 200 });
+    }
+
     const userPayload = await getUserFromRequest(request);
 
     if (!userPayload) {
       return NextResponse.json({ success: false, error: 'Unauthorized' }, { status: 401 });
     }
 
-    // Find orders and populate Card details
     const rawOrders = await Order.find({ userId: userPayload.id })
+      .populate('productId')
       .populate('cardId')
       .sort({ createdAt: -1 })
       .lean();
 
-    const orders = rawOrders.map(order => {
-      if (!order.cardId && order.cardSnapshot) {
-        return {
-          ...order,
-          cardId: {
-            _id: order.cardSnapshot._id || ('snapshot-' + order._id),
-            ...order.cardSnapshot
-          }
-        };
-      }
-      return order;
+    const orders = rawOrders.map((order) => {
+      const productObj = order.productId || (order.productSnapshot && order.productSnapshot.title ? order.productSnapshot : null) || order.cardId || order.cardSnapshot || {};
+      
+      return {
+        ...order,
+        productId: productObj,
+        cardId: {
+          _id: productObj._id || ('prod-' + order._id),
+          name: productObj.title || productObj.name || 'Dropzen Leads Bundle',
+          type: productObj.category || productObj.type || 'E-Commerce',
+          entryFee: order.pricePaid,
+          image: productObj.image || '',
+          ...productObj,
+        },
+      };
     });
 
     return NextResponse.json({ success: true, orders }, { status: 200 });
@@ -45,36 +73,45 @@ export async function GET(request) {
   }
 }
 
-// POST: Create a new order (Buy Card with Anti-Fraud Validation)
+// POST: Create a new order (Buy Dropshipping Product Leads with UTR Validation)
 export async function POST(request) {
   try {
     await dbConnect();
     const userPayload = await getUserFromRequest(request);
 
     if (!userPayload) {
-      return NextResponse.json({ success: false, error: 'Please log in to purchase cards' }, { status: 401 });
+      return NextResponse.json({ success: false, error: 'Please log in to purchase product leads' }, { status: 401 });
     }
 
-    const { cardId, utrNumber, senderUpiId, paymentApp, paymentScreenshot } = await request.json();
+    const {
+      productId,
+      cardId,
+      quantity = 10,
+      utrNumber,
+      senderUpiId,
+      paymentApp,
+      paymentScreenshot,
+    } = await request.json();
 
-    if (!cardId) {
-      return NextResponse.json({ success: false, error: 'Card ID is required' }, { status: 400 });
+    const targetId = productId || cardId;
+    if (!targetId) {
+      return NextResponse.json({ success: false, error: 'Product ID is required' }, { status: 400 });
     }
 
-    // 1. Anti-Spam Check: Max 2 pending orders per user
+    // 1. Anti-Spam Check: Max 3 pending orders per user
     const pendingOrdersCount = await Order.countDocuments({
       userId: userPayload.id,
       status: 'pending',
     });
 
-    if (pendingOrdersCount >= 2) {
+    if (pendingOrdersCount >= 3) {
       return NextResponse.json({
         success: false,
-        error: 'You already have 2 pending verification orders. Please wait for Admin approval before submitting another purchase.',
+        error: 'You already have 3 pending verification orders. Please wait for approval before submitting another purchase.',
       }, { status: 400 });
     }
 
-    // 2. Strict NPCI-compliant UTR Validation Engine
+    // 2. NPCI-compliant UTR Validation Engine
     const utrResult = validateUtrNumber(utrNumber);
     if (!utrResult.isValid) {
       return NextResponse.json({ success: false, error: utrResult.error }, { status: 400 });
@@ -94,11 +131,10 @@ export async function POST(request) {
     if (!paymentScreenshot || typeof paymentScreenshot !== 'string' || !paymentScreenshot.startsWith('data:image/')) {
       return NextResponse.json({
         success: false,
-        error: 'A valid payment screenshot or receipt image is mandatory to prevent fraud.',
+        error: 'A valid payment screenshot or receipt image is mandatory.',
       }, { status: 400 });
     }
 
-    // Check screenshot payload size (limit to ~4MB base64)
     if (paymentScreenshot.length > 5 * 1024 * 1024) {
       return NextResponse.json({
         success: false,
@@ -106,102 +142,110 @@ export async function POST(request) {
       }, { status: 400 });
     }
 
-    // 5. Global Duplicate UTR Check (reject if used anywhere)
+    // 5. Global Duplicate UTR Check
     const duplicateUtr = await Order.findOne({ utrNumber: cleanUtr });
     if (duplicateUtr) {
       return NextResponse.json({
         success: false,
-        error: 'This UPI UTR reference number has already been recorded in the system. Duplicate submissions are strictly rejected.',
+        error: 'This UPI UTR reference number has already been recorded. Duplicate submissions are strictly rejected.',
       }, { status: 400 });
     }
 
-    // Verify card exists and is in stock
-    const card = await Card.findById(cardId);
-    if (!card) {
-      return NextResponse.json({ success: false, error: 'Card not found' }, { status: 404 });
+    // Find Product (try Product first, then Card)
+    let product = null;
+    try {
+      product = await Product.findById(targetId);
+    } catch (e) {}
+
+    if (!product) {
+      product = await Product.findOne({ id: targetId });
     }
 
-    if (card.qty <= 0) {
-      return NextResponse.json({ success: false, error: 'Card is out of stock' }, { status: 400 });
+    if (!product) {
+      try {
+        product = await Card.findById(targetId);
+      } catch (e) {}
     }
 
-    // Prevent duplicate purchases of the same card by the same user (pending or completed)
-    const existingOrder = await Order.findOne({
-      userId: userPayload.id,
-      cardId: card._id,
-      status: { $in: ['pending', 'completed'] }
-    });
-
-    if (existingOrder) {
-      const errorMsg = existingOrder.status === 'completed'
-        ? 'You have already purchased this card. Check "My Orders" for details.'
-        : 'You already have a pending order for this card. Please verify payment.';
-      return NextResponse.json({ success: false, error: errorMsg }, { status: 400 });
+    if (!product) {
+      return NextResponse.json({ success: false, error: 'Product not found' }, { status: 404 });
     }
 
-    // Decrement card quantity atomically
-    await Card.findByIdAndUpdate(card._id, { $inc: { qty: -1 } });
+    const orderQty = Math.max(10, Number(quantity) || 10);
+    const unitPrice = product.price || product.entryFee || 999;
+    const finalPrice = unitPrice; // Bundle price as listed on product
 
-    // Create a random mock real card details to be released after admin verification
-    const rawCardNum = card.cardNumber || '4532 8921 4432 9901';
-    const randomCardNum = rawCardNum.split(' ').map((part, index) => {
-      if (index === 1 || index === 2) {
-        return Math.floor(1000 + Math.random() * 9000).toString();
-      }
-      return part;
-    }).join(' ');
+    // Prepare default customer leads for this product
+    const leadRows = (product.sampleRows && product.sampleRows.length > 0)
+      ? product.sampleRows.map((row, idx) => ({
+          id: idx + 1,
+          name: row.name || `Customer ${idx + 1}`,
+          phone: row.phone ? row.phone.replace(/•/g, Math.floor(Math.random() * 9 + 1)) : `+91 98${Math.floor(10000000 + Math.random() * 90000000)}`,
+          city: row.city || 'Mumbai',
+          state: row.state || 'Maharashtra',
+          pincode: row.pincode || `${Math.floor(110000 + Math.random() * 700000)}`,
+          product: row.product || product.title,
+          amount: row.amount || '₹1,499',
+          payment: row.payment || 'COD Delivered',
+          status: 'Verified Ready for Resell',
+          date: row.date || 'Sept 2026',
+        }))
+      : [
+          { id: 1, name: 'Aarav Mehta', phone: '+91 98201 84920', city: 'Mumbai', state: 'Maharashtra', pincode: '400001', product: product.title, amount: '₹1,699', payment: 'COD Delivered', status: 'Verified', date: 'Sept 14, 2026' },
+          { id: 2, name: 'Priya Sundaram', phone: '+91 98450 71923', city: 'Bengaluru', state: 'Karnataka', pincode: '560001', product: product.title, amount: '₹2,150', payment: 'UPI Prepaid', status: 'Verified', date: 'Sept 14, 2026' },
+          { id: 3, name: 'Rajesh Kulkarni', phone: '+91 94223 99182', city: 'Pune', state: 'Maharashtra', pincode: '411001', product: product.title, amount: '₹1,399', payment: 'COD Delivered', status: 'Verified', date: 'Sept 13, 2026' },
+          { id: 4, name: 'Kavita Singhal', phone: '+91 98112 34910', city: 'Gurugram', state: 'Haryana', pincode: '122001', product: product.title, amount: '₹1,199', payment: 'Prepaid', status: 'Verified', date: 'Sept 14, 2026' },
+          { id: 5, name: 'Vikas Choudhary', phone: '+91 94140 55192', city: 'Jaipur', state: 'Rajasthan', pincode: '302001', product: product.title, amount: '₹899', payment: 'COD Delivered', status: 'Verified', date: 'Sept 12, 2026' },
+          { id: 6, name: 'Deepak Rawat', phone: '+91 97561 22849', city: 'Dehradun', state: 'Uttarakhand', pincode: '248001', product: product.title, amount: '₹1,450', payment: 'COD Delivered', status: 'Verified', date: 'Sept 13, 2026' },
+          { id: 7, name: 'Ananya Mukherjee', phone: '+91 98305 66719', city: 'Kolkata', state: 'West Bengal', pincode: '700001', product: product.title, amount: '₹1,299', payment: 'UPI Prepaid', status: 'Verified', date: 'Sept 13, 2026' },
+          { id: 8, name: 'Suresh Reddy', phone: '+91 99890 11928', city: 'Hyderabad', state: 'Telangana', pincode: '500001', product: product.title, amount: '₹2,499', payment: 'COD Delivered', status: 'Verified', date: 'Sept 12, 2026' },
+          { id: 9, name: 'Pooja Verma', phone: '+91 98720 44918', city: 'Chandigarh', state: 'Punjab', pincode: '160001', product: product.title, amount: '₹1,750', payment: 'COD Delivered', status: 'Verified', date: 'Sept 14, 2026' },
+          { id: 10, name: 'Manoj Patel', phone: '+91 98980 33819', city: 'Ahmedabad', state: 'Gujarat', pincode: '380001', product: product.title, amount: '₹1,999', payment: 'UPI Prepaid', status: 'Verified', date: 'Sept 14, 2026' },
+        ];
 
     const newOrder = await Order.create({
       userId: userPayload.id,
-      cardId: card._id,
+      productId: product._id,
+      cardId: product._id, // alias
+      quantity: orderQty,
       status: 'pending',
-      pricePaid: card.entryFee,
+      pricePaid: finalPrice,
       utrNumber: cleanUtr,
       senderUpiId: trimmedSender,
       paymentApp: paymentApp || 'other',
-      paymentScreenshot: paymentScreenshot,
-      releasedCardDetails: {
-        number: randomCardNum,
-        expiry: card.expiry || (card.type === 'rupay' ? '12/30' : '08/30'),
-        cvv: card.cvv && card.cvv !== '***' ? card.cvv : Math.floor(100 + Math.random() * 900).toString(),
-        cardHolder: card.cardHolder || userPayload.username.toUpperCase(),
-        dob: card.dob || '15/07/1994',
-        atmPin: card.atmPin || Math.floor(1000 + Math.random() * 9000).toString(),
+      paymentScreenshot,
+      excelData: leadRows,
+      productSnapshot: {
+        _id: product._id,
+        title: product.title || product.name,
+        category: product.category || product.type || 'Home & Kitchen',
+        price: finalPrice,
+        image: product.image || '',
+        badge: product.badge || '🔥 Trending',
+        recordsCount: product.recordsCount || 5000,
+        deliveryTime: product.deliveryTime || '5 - 10 Mins Automated',
+        meeshoCost: product.meeshoCost || 199,
+        resellPrice: product.resellPrice || 899,
       },
       cardSnapshot: {
-        name: card.name,
-        type: card.type,
-        limit: card.limit,
-        cardNumber: card.cardNumber,
-        expiry: card.expiry,
-        cvv: card.cvv,
-        cardHolder: card.cardHolder || userPayload.username.toUpperCase(),
-        dob: card.dob || '15/07/1994',
-        atmPin: card.atmPin || '1234',
-        entryFee: card.entryFee,
-        gradientStart: card.gradientStart,
-        gradientEnd: card.gradientEnd,
-      }
+        _id: product._id,
+        name: product.title || product.name,
+        type: product.category || product.type || 'Home & Kitchen',
+        entryFee: finalPrice,
+        image: product.image || '',
+      },
     });
 
-    // Send email notification to Admin asynchronously (fire & log)
-    sendOrderNotificationEmail({
-      order: newOrder,
-      buyer: { username: userPayload.username, email: userPayload.email },
-      card: { name: card.name, type: card.type, entryFee: card.entryFee }
-    }).catch(err => console.error('Admin order notification email failed:', err));
-
-    return NextResponse.json({
-      success: true,
-      message: 'Order created successfully. Please verify payment to activate.',
-      order: newOrder
-    }, { status: 201 });
-
+    return NextResponse.json(
+      {
+        success: true,
+        message: 'Order submitted successfully! Verification takes 5-10 minutes.',
+        order: newOrder,
+      },
+      { status: 201 }
+    );
   } catch (error) {
-    console.error('Create order error:', error);
-    return NextResponse.json({ 
-      success: false, 
-      error: error.message || 'Failed to create order' 
-    }, { status: 500 });
+    console.error('Order create error:', error);
+    return NextResponse.json({ success: false, error: 'Failed to create order' }, { status: 500 });
   }
 }

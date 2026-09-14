@@ -805,6 +805,144 @@
   margin-top: 12px;
 }
 
+/* Direct Image Upload Dropzone & Preview Styles */
+.image-upload-dropzone {
+  border: 2px dashed var(--border-color);
+  border-radius: 12px;
+  padding: 24px 16px;
+  text-align: center;
+  background: #f8fafc;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+}
+
+.image-upload-dropzone:hover {
+  border-color: var(--primary);
+  background: rgba(79, 70, 229, 0.04);
+}
+
+.image-upload-icon {
+  width: 48px;
+  height: 48px;
+  border-radius: 12px;
+  background: #eef2ff;
+  color: var(--primary);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.image-upload-title {
+  font-size: 0.92rem;
+  font-weight: 700;
+  color: var(--text-primary);
+}
+
+.image-upload-subtitle {
+  font-size: 0.78rem;
+  color: var(--text-secondary);
+  max-width: 320px;
+  line-height: 1.4;
+}
+
+.btn-upload-browse {
+  margin-top: 6px;
+  font-size: 0.82rem;
+  font-weight: 700;
+  padding: 6px 16px;
+  border-radius: 8px;
+  background: white;
+  border: 1px solid var(--border-color);
+  color: var(--text-primary);
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.04);
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+}
+
+.btn-upload-browse:hover {
+  background: #f1f5f9;
+}
+
+/* Image Preview Card */
+.image-preview-card {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  background: #f8fafc;
+  border: 1px solid var(--border-color);
+  border-radius: 12px;
+  padding: 12px 16px;
+}
+
+.image-preview-thumb {
+  width: 72px;
+  height: 72px;
+  border-radius: 10px;
+  overflow: hidden;
+  border: 1px solid #e2e8f0;
+  background: white;
+  flex-shrink: 0;
+}
+
+.image-preview-thumb img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.image-preview-details {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.image-preview-status {
+  font-size: 0.82rem;
+  font-weight: 700;
+  color: var(--success);
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.image-preview-actions {
+  display: flex;
+  gap: 8px;
+}
+
+.btn-image-action {
+  font-size: 0.78rem;
+  font-weight: 600;
+  padding: 6px 12px;
+  border-radius: 6px;
+  border: 1px solid var(--border-color);
+  background: white;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  transition: all 0.15s;
+}
+
+.btn-image-action:hover {
+  background: #f1f5f9;
+}
+
+.btn-image-action.danger {
+  color: var(--accent);
+  border-color: rgba(244, 63, 94, 0.2);
+}
+
+.btn-image-action.danger:hover {
+  background: rgba(244, 63, 94, 0.06);
+}
+
 /* 11. PHONE/MOBILE SCREEN STYLING (MEDIA QUERIES) */
 @media (max-width: 768px) {
   /* Hide desktop-only layout pieces */
@@ -1228,4 +1366,317 @@
   padding: 60px 20px;
   color: #94a3b8;
   font-size: 0.88rem;
+}
+
+/* ========================================================
+   ADMIN MOBILE TOPBAR & BOTTOM NAVIGATION
+   ======================================================== */
+.admin-mobile-topbar {
+  display: none;
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 62px;
+  background: rgba(255, 255, 255, 0.95);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border-bottom: 1px solid var(--border-color);
+  padding: 0 16px;
+  align-items: center;
+  justify-content: space-between;
+  z-index: 800;
+  box-shadow: 0 2px 10px rgba(15, 23, 42, 0.04);
+}
+
+.mobile-header-left {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.mobile-home-btn {
+  width: 36px;
+  height: 36px;
+  border-radius: 10px;
+  background: #f1f5f9;
+  border: 1px solid var(--border-color);
+  color: var(--text-primary);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  text-decoration: none;
+  transition: all 0.2s;
+}
+
+.mobile-home-btn:hover {
+  background: #e2e8f0;
+}
+
+.mobile-header-brand {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.logo-icon-mobile {
+  color: var(--primary);
+}
+
+.mobile-brand-title {
+  font-size: 1.05rem;
+  font-weight: 800;
+  background: linear-gradient(135deg, var(--primary), var(--secondary));
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+
+.mobile-header-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.mobile-header-icon-btn {
+  width: 36px;
+  height: 36px;
+  border-radius: 10px;
+  background: #f8fafc;
+  border: 1px solid var(--border-color);
+  color: var(--text-secondary);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.mobile-header-icon-btn:hover {
+  background: #e2e8f0;
+  color: var(--text-primary);
+}
+
+.mobile-header-icon-btn.mobile-logout {
+  color: var(--accent);
+}
+
+/* Mobile Bottom Dock */
+.admin-mobile-bottom-nav {
+  display: none;
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  height: 66px;
+  background: rgba(255, 255, 255, 0.96);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border-top: 1px solid var(--border-color);
+  justify-content: space-around;
+  align-items: center;
+  z-index: 800;
+  padding: 0 8px;
+  box-shadow: 0 -4px 20px rgba(15, 23, 42, 0.06);
+}
+
+.admin-bottom-tab {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 3px;
+  background: none;
+  border: none;
+  padding: 8px 4px;
+  color: var(--text-muted);
+  cursor: pointer;
+  transition: all 0.2s;
+  position: relative;
+}
+
+.admin-bottom-tab span {
+  font-size: 0.72rem;
+  font-weight: 700;
+}
+
+.admin-bottom-tab.active {
+  color: var(--primary);
+}
+
+.admin-bottom-tab.active span {
+  font-weight: 800;
+}
+
+.tab-icon-wrap {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.tab-pending-badge {
+  position: absolute;
+  top: -4px;
+  right: -8px;
+  background: var(--accent);
+  color: white;
+  font-size: 0.65rem;
+  font-weight: 800;
+  padding: 1px 5px;
+  border-radius: 100px;
+  min-width: 16px;
+  text-align: center;
+}
+
+/* ========================================================
+   RESPONSIVE MEDIA QUERIES (MOBILE PHONE & TABLET)
+   ======================================================== */
+@media (max-width: 991px) {
+  .admin-sidebar {
+    display: none !important;
+  }
+
+  .admin-mobile-topbar {
+    display: flex !important;
+  }
+
+  .admin-mobile-bottom-nav {
+    display: flex !important;
+  }
+
+  .admin-main-content {
+    margin-left: 0 !important;
+    width: 100% !important;
+    padding: 76px 14px 84px 14px !important;
+  }
+
+  /* Stats Grid */
+  .stats-grid {
+    grid-template-columns: repeat(2, 1fr) !important;
+    gap: 12px !important;
+    margin-bottom: 20px !important;
+  }
+
+  .stat-card {
+    padding: 16px !important;
+    border-radius: 14px !important;
+  }
+
+  .stat-card-value {
+    font-size: 1.45rem !important;
+  }
+
+  .stat-card-label {
+    font-size: 0.74rem !important;
+  }
+
+  /* Charts */
+  .charts-grid {
+    grid-template-columns: 1fr !important;
+    gap: 16px !important;
+  }
+
+  /* Content Cards */
+  .content-card {
+    padding: 16px !important;
+    border-radius: 16px !important;
+    margin-bottom: 20px !important;
+  }
+
+  .content-card-header {
+    flex-direction: column !important;
+    align-items: flex-start !important;
+    gap: 12px !important;
+  }
+
+  .card-toolbar {
+    width: 100% !important;
+    flex-direction: column !important;
+    gap: 10px !important;
+  }
+
+  .search-input-wrap {
+    width: 100% !important;
+  }
+
+  .filter-select {
+    width: 100% !important;
+  }
+
+  /* Table Mobile Scroll */
+  .table-responsive-container,
+  .admin-table-container,
+  .table-wrapper {
+    overflow-x: auto !important;
+    -webkit-overflow-scrolling: touch !important;
+    width: 100% !important;
+    border-radius: 12px !important;
+  }
+
+  .admin-table {
+    min-width: 700px !important;
+  }
+
+  /* Action Buttons & Badges */
+  .action-buttons-group {
+    flex-wrap: wrap !important;
+    gap: 6px !important;
+  }
+
+  .btn-verify-action,
+  .btn-action-reject {
+    padding: 6px 12px !important;
+    font-size: 0.78rem !important;
+  }
+
+  /* Modals as Responsive Bottom Sheets on Mobile */
+  .admin-modal-overlay {
+    align-items: flex-end !important;
+    padding: 0 !important;
+  }
+
+  .admin-modal-container,
+  .proof-lightbox-container {
+    width: 100% !important;
+    max-width: 100% !important;
+    border-radius: 22px 22px 0 0 !important;
+    max-height: 90vh !important;
+    margin: 0 !important;
+    animation: admin-slide-up 0.3s ease !important;
+  }
+
+  .admin-modal-body {
+    max-height: calc(90vh - 140px) !important;
+    overflow-y: auto !important;
+    padding: 16px !important;
+  }
+
+  .admin-modal-footer {
+    padding: 14px 16px !important;
+  }
+
+  .proof-info-grid {
+    grid-template-columns: 1fr !important;
+    gap: 8px !important;
+  }
+}
+
+@media (max-width: 480px) {
+  .stats-grid {
+    grid-template-columns: 1fr 1fr !important;
+    gap: 10px !important;
+  }
+
+  .stat-card-value {
+    font-size: 1.3rem !important;
+  }
+
+  .mobile-brand-title {
+    font-size: 0.95rem !important;
+  }
+
+  .admin-bottom-tab span {
+    font-size: 0.68rem !important;
+  }
 }
