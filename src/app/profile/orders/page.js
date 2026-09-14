@@ -24,13 +24,14 @@ import {
   MapPin,
   ExternalLink,
   Eye,
-  Check
+  Check,
+  LogOut
 } from 'lucide-react';
 import Link from 'next/link';
 import './page.css';
 
 export default function ProfileOrders() {
-  const { user, loading: authLoading } = useAuth();
+  const { user, logout, loading: authLoading } = useAuth();
   
   // Auth state
   const [authOpen, setAuthOpen] = useState(false);
@@ -170,6 +171,11 @@ export default function ProfileOrders() {
     exportLeadsToCsv(leads, filename);
   };
 
+  const handleLogout = async () => {
+    await logout();
+    window.location.href = '/';
+  };
+
   if (authLoading) {
     return (
       <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100vh', flexDirection: 'column', gap: '16px' }}>
@@ -245,7 +251,7 @@ export default function ProfileOrders() {
                   Download 100% verified customer leads for trending products to fulfill on Meesho, COD, or Indiamart.
                 </p>
               </div>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+              <div className="orders-header-actions" style={{ display: 'flex', alignItems: 'center', gap: '10px', flexWrap: 'wrap' }}>
                 {isLiveSyncing && (
                   <span style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', display: 'inline-flex', alignItems: 'center', gap: '6px' }}>
                     <RefreshCw size={12} className="animate-spin" style={{ animation: 'spin 3s linear infinite' }} />
@@ -254,6 +260,14 @@ export default function ProfileOrders() {
                 )}
                 <button onClick={() => fetchOrders(false)} className="btn-secondary" style={{ padding: '8px 18px', fontSize: '0.9rem', display: 'inline-flex', alignItems: 'center', gap: '6px' }}>
                   <RefreshCw size={14} /> Refresh Vault
+                </button>
+                <button 
+                  type="button" 
+                  onClick={handleLogout} 
+                  className="btn-order-logout"
+                  title="Log Out of your account"
+                >
+                  <LogOut size={14} /> Log Out
                 </button>
               </div>
             </div>

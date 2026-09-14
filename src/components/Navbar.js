@@ -1,6 +1,6 @@
 'use client';
  
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 import { useAuth } from '@/context/AuthContext';
@@ -12,12 +12,42 @@ export default function Navbar({ onOpenAuth }) {
   const [mounted, setMounted] = useState(false);
   const [isScrolled, setIsScrolled] = useState(false);
   const [dynamicSettings, setDynamicSettings] = useState(null);
+  const [dropdownOpen, setDropdownOpen] = useState(false);
+  const dropdownRef = useRef(null);
   const pathname = usePathname();
   const router = useRouter();
 
   useEffect(() => {
     setMounted(true);
   }, []);
+
+  // Outside click & tap listener to auto-close profile dropdown
+  useEffect(() => {
+    const handleOutsideClick = (e) => {
+      if (dropdownRef.current && !dropdownRef.current.contains(e.target)) {
+        setDropdownOpen(false);
+      }
+    };
+    document.addEventListener('mousedown', handleOutsideClick);
+    document.addEventListener('touchstart', handleOutsideClick, { passive: true });
+    return () => {
+      document.removeEventListener('mousedown', handleOutsideClick);
+      document.removeEventListener('touchstart', handleOutsideClick);
+    };
+  }, []);
+
+  // Close dropdown whenever route changes
+  useEffect(() => {
+    setDropdownOpen(false);
+  }, [pathname]);
+
+  const handleLogout = async () => {
+    setDropdownOpen(false);
+    await logout();
+    if (pathname.startsWith('/profile') || pathname.startsWith('/admin')) {
+      router.push('/');
+    }
+  };
  
   useEffect(() => {
     const handleScroll = () => {
@@ -114,29 +144,59 @@ export default function Navbar({ onOpenAuth }) {
           {/* Right Authentication / Profile Actions */}
           <div className="nav-actions">
             {mounted && user ? (
-              <div className="nav-dropdown">
-                <div className="profile-trigger">
+              <div className="nav-dropdown" ref={dropdownRef}>
+                <button 
+                  type="button"
+                  className={`profile-trigger ${dropdownOpen ? 'open' : ''}`}
+                  onClick={() => setDropdownOpen(prev => !prev)}
+                  aria-haspopup="true"
+                  aria-expanded={dropdownOpen}
+                >
                   <div className="profile-avatar">
                     {user.username ? user.username.charAt(0).toUpperCase() : 'U'}
                   </div>
                   <span className="profile-name">{user.username}</span>
-                  <ChevronDown size={14} />
-                </div>
-                <div className="dropdown-menu">
-                  <Link href="/profile/orders" className="dropdown-item">
+                  <ChevronDown 
+                    size={14} 
+                    className="profile-chevron"
+                    style={{ 
+                      transform: dropdownOpen ? 'rotate(180deg)' : 'none', 
+                      transition: 'transform 0.2s ease' 
+                    }} 
+                  />
+                </button>
+                <div className={`dropdown-menu ${dropdownOpen ? 'show' : ''}`}>
+                  <div className="dropdown-user-header">
+                    <div className="dropdown-user-name">{user.username}</div>
+                    <div className="dropdown-user-email">{user.email || 'Verified Member'}</div>
+                  </div>
+                  <div className="dropdown-divider"></div>
+                  <Link 
+                    href="/profile/orders" 
+                    className="dropdown-item"
+                    onClick={() => setDropdownOpen(false)}
+                  >
                     <ShoppingBag size={16} />
-                    My Orders
+                    My Orders &amp; Leads
                   </Link>
                   {user.isAdmin && (
-                    <Link href="/admin" className="dropdown-item">
+                    <Link 
+                      href="/admin" 
+                      className="dropdown-item"
+                      onClick={() => setDropdownOpen(false)}
+                    >
                       <Shield size={16} color="var(--primary)" />
-                      Admin Panel
+                      Admin Dashboard
                     </Link>
                   )}
                   <div className="dropdown-divider"></div>
-                  <button onClick={logout} className="dropdown-item" style={{ color: 'var(--accent)' }}>
+                  <button 
+                    type="button" 
+                    onClick={handleLogout} 
+                    className="dropdown-item dropdown-logout-btn"
+                  >
                     <LogOut size={16} />
-                    Logout
+                    Log Out
                   </button>
                 </div>
               </div>
@@ -167,30 +227,54 @@ export default function Navbar({ onOpenAuth }) {
           <ShoppingBag size={20} />
           <span>Products</span>
         </Link>
-        <a 
-          href="#excel-preview" 
-          onClick={(e) => handleNavClick(e, 'excel-preview')} 
-          className="bottom-tab-item"
-        >
-          <FileSpreadsheet size={20} />
-          <span>Preview</span>
-        </a>
+        
         {mounted && user ? (
-          <Link href="/profile/orders" className={`bottom-tab-item ${pathname.startsWith('/profile') ? 'active' : ''}`}>
-            <ShoppingBag size={20} />
-            <span>Orders</span>
-          </Link>
+          <>
+            <Link 
+              href="/profile/orders" 
+              className={`bottom-tab-item ${pathname.startsWith('/profile') ? 'active' : ''}`}
+            >
+              <FileSpreadsheet size={20} />
+              <span>My Leads</span>
+            </Link>
+            {user.isAdmin && (
+              <Link 
+                href="/admin" 
+                className={`bottom-tab-item ${pathname.startsWith('/admin') ? 'active' : ''}`}
+              >
+                <Shield size={20} />
+                <span>Admin</span>
+              </Link>
+            )}
+            <button 
+              type="button" 
+              onClick={handleLogout} 
+              className="bottom-tab-item tab-logout-btn"
+              title="Log Out of your account"
+            >
+              <LogOut size={20} />
+              <span>Logout</span>
+            </button>
+          </>
         ) : (
-          <button onClick={() => onOpenAuth('signin')} className="bottom-tab-item">
-            <User size={20} />
-            <span>Sign In</span>
-          </button>
-        )}
-        {mounted && user && user.isAdmin && (
-          <Link href="/admin" className={`bottom-tab-item ${pathname.startsWith('/admin') ? 'active' : ''}`}>
-            <Shield size={20} />
-            <span>Admin</span>
-          </Link>
+          <>
+            <a 
+              href="#excel-preview" 
+              onClick={(e) => handleNavClick(e, 'excel-preview')} 
+              className="bottom-tab-item"
+            >
+              <FileSpreadsheet size={20} />
+              <span>Preview</span>
+            </a>
+            <button 
+              type="button" 
+              onClick={() => onOpenAuth('signin')} 
+              className="bottom-tab-item"
+            >
+              <User size={20} />
+              <span>Sign In</span>
+            </button>
+          </>
         )}
       </div>
     </>

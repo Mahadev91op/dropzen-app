@@ -800,11 +800,178 @@ export default function Home() {
         </section>
 
         {/* ========================================================
-        </section>
-
-        {/* ========================================================
-            TESTIMONIALS SECTION
+            REDESIGNED EXCEL LEADS WORKSTATION PREVIEW (id="excel-preview")
             ======================================================== */}
+        <section className="section-padding excel-preview-section" id="excel-preview">
+          <div className="container">
+            <div className="section-header">
+              <span className="section-subtitle">
+                <FileSpreadsheet size={16} /> Transparency &amp; Data Integrity
+              </span>
+              <h2 className="section-title">
+                Interactive Preview of <span>Excel Lead Columns</span>
+              </h2>
+              <p className="section-desc">
+                Here is the exact structure of your downloadable Excel (.xlsx) file. 100% genuine Pan-India buyers with unmasked phone numbers and full delivery addresses delivered instantly upon verification.
+              </p>
+            </div>
+
+            {/* Desktop & Mobile Interactive Excel Workstation Mockup */}
+            <div className="excel-mockup-card">
+              {/* Window Header */}
+              <div className="excel-window-header">
+                <div className="excel-mac-dots">
+                  <span className="dot dot-close"></span>
+                  <span className="dot dot-min"></span>
+                  <span className="dot dot-expand"></span>
+                </div>
+                <div className="excel-file-title">
+                  <FileSpreadsheet size={16} className="excel-file-icon" />
+                  <span>Dropzen_PanIndia_Leads.xlsx</span>
+                  <span className="excel-ext-pill">Excel Sheet</span>
+                </div>
+                <div className="excel-header-actions">
+                  <span className="excel-sync-pill">
+                    <span className="sync-pulse"></span> Live Sept 2026 Database
+                  </span>
+                </div>
+              </div>
+
+              {/* Sheet Tabs Bar */}
+              <div className="excel-tabs-strip">
+                <div className="excel-tab-item active">
+                  <FileSpreadsheet size={13} />
+                  <span>Sheet1: Home &amp; Kitchen (5,240)</span>
+                </div>
+                <div className="excel-tab-item">
+                  <Layers size={13} />
+                  <span>Sheet2: High-Ticket Spenders (10,480)</span>
+                </div>
+                <div className="excel-tab-item">
+                  <Sparkles size={13} />
+                  <span>Sheet3: Fashion &amp; Beauty (7,500)</span>
+                </div>
+              </div>
+
+              {/* Formula & Toolbar */}
+              <div className="excel-formula-bar">
+                <div className="formula-cell-box">
+                  <span className="fx-label">fx</span>
+                  <span className="fx-range">A1:I6 &bull; PREVIEW SAMPLE</span>
+                </div>
+                <div className="excel-mobile-hint">
+                  <ArrowRight size={13} />
+                  <span>Swipe table horizontally to see all columns</span>
+                </div>
+              </div>
+
+              {/* Scrollable Table Grid */}
+              <div className="excel-table-scroll-area">
+                <table className="excel-native-table">
+                  <thead>
+                    <tr className="excel-letters-row">
+                      <th className="cell-corner">#</th>
+                      <th className="col-letter">A</th>
+                      <th className="col-letter">B</th>
+                      <th className="col-letter">C</th>
+                      <th className="col-letter">D</th>
+                      <th className="col-letter">E</th>
+                      <th className="col-letter">F</th>
+                      <th className="col-letter">G</th>
+                      <th className="col-letter">H</th>
+                      <th className="col-letter">I</th>
+                    </tr>
+                    <tr className="excel-headers-row">
+                      <th className="row-num-header"></th>
+                      <th>Lead #</th>
+                      <th>Customer Name</th>
+                      <th>Mobile / WhatsApp</th>
+                      <th>Delivery City</th>
+                      <th>State</th>
+                      <th>PIN Code</th>
+                      <th>Ordered Product</th>
+                      <th>Order Value</th>
+                      <th>Payment Status</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {SAMPLE_LEADS_PREVIEW.map((row, idx) => (
+                      <tr key={row.id} className="excel-data-row">
+                        <td className="row-num-cell">{idx + 1}</td>
+                        <td className="cell-lead-id">
+                          <span className="lead-num-chip">#{row.id.toString().padStart(4, '0')}</span>
+                        </td>
+                        <td className="cell-customer">
+                          <div className="customer-cell-wrap">
+                            <span className="avatar-dot">{row.name.charAt(0)}</span>
+                            <strong>{row.name}</strong>
+                          </div>
+                        </td>
+                        <td className="cell-phone">
+                          <div className="phone-cell-wrap font-mono">
+                            <span>{row.phone}</span>
+                            <span className="wa-verified-tag" title="WhatsApp Active">WA</span>
+                          </div>
+                        </td>
+                        <td className="cell-city">
+                          <span className="city-pill">{row.city}</span>
+                        </td>
+                        <td className="cell-state">{row.state}</td>
+                        <td className="cell-pincode font-mono">{row.pincode}</td>
+                        <td className="cell-product truncate" title={row.product}>
+                          {row.product}
+                        </td>
+                        <td className="cell-amount font-mono">
+                          <strong>{row.amount}</strong>
+                        </td>
+                        <td className="cell-payment">
+                          <span className={`payment-status-chip ${row.payment.toLowerCase().includes('prepaid') ? 'chip-prepaid' : 'chip-cod'}`}>
+                            <Check size={12} /> {row.payment}
+                          </span>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+
+              {/* Workstation Footer Strip */}
+              <div className="excel-window-footer">
+                <div className="excel-footer-pillars">
+                  <div className="footer-pillar-item">
+                    <span className="pillar-dot"></span>
+                    <div>
+                      <strong>94.2% Connect Rate</strong>
+                      <p>Unmasked WhatsApp numbers on order</p>
+                    </div>
+                  </div>
+                  <div className="footer-pillar-item">
+                    <span className="pillar-dot"></span>
+                    <div>
+                      <strong>Low Return Rate</strong>
+                      <p>Historical COD RTO under 11.4%</p>
+                    </div>
+                  </div>
+                  <div className="footer-pillar-item">
+                    <span className="pillar-dot"></span>
+                    <div>
+                      <strong>Instant Download</strong>
+                      <p>Full Excel (.xlsx) &amp; CSV unlocked</p>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="excel-cta-box">
+                  <a href="#trending-bundles" className="btn-download-sample-cta">
+                    <Download size={16} />
+                    <span>Get Full 5,000+ Verified Excel Leads</span>
+                    <ArrowRight size={16} />
+                  </a>
+                </div>
+              </div>
+            </div>
+          </div>
+        </section>
         <section className="section-padding">
           <div className="container">
             <div className="section-header">
