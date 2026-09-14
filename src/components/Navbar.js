@@ -9,10 +9,15 @@ import './Navbar.css';
  
 export default function Navbar({ onOpenAuth }) {
   const { user, logout } = useAuth();
+  const [mounted, setMounted] = useState(false);
   const [isScrolled, setIsScrolled] = useState(false);
   const [dynamicSettings, setDynamicSettings] = useState(null);
   const pathname = usePathname();
   const router = useRouter();
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
  
   useEffect(() => {
     const handleScroll = () => {
@@ -101,7 +106,7 @@ export default function Navbar({ onOpenAuth }) {
  
           {/* Right Authentication / Profile Actions */}
           <div className="nav-actions">
-            {user ? (
+            {mounted && user ? (
               <div className="nav-dropdown">
                 <div className="profile-trigger">
                   <div className="profile-avatar">
@@ -163,7 +168,7 @@ export default function Navbar({ onOpenAuth }) {
           <CheckCircle2 size={20} />
           <span>Verify</span>
         </a>
-        {user ? (
+        {mounted && user ? (
           <Link href="/profile/orders" className={`bottom-tab-item ${pathname.startsWith('/profile') ? 'active' : ''}`}>
             <ShoppingBag size={20} />
             <span>Orders</span>
@@ -174,7 +179,7 @@ export default function Navbar({ onOpenAuth }) {
             <span>Sign In</span>
           </button>
         )}
-        {user && user.isAdmin && (
+        {mounted && user && user.isAdmin && (
           <Link href="/admin" className={`bottom-tab-item ${pathname.startsWith('/admin') ? 'active' : ''}`}>
             <Shield size={20} />
             <span>Admin</span>

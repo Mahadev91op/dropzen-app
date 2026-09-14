@@ -37,25 +37,9 @@ if (typeof window !== 'undefined' && !window.__authFetchPatched) {
 }
 
 export function AuthProvider({ children }) {
-  // 1. Immediately hydrate user from localStorage on mount (zero flash of logged-out state)
-  const [user, setUser] = useState(() => {
-    if (typeof window !== 'undefined') {
-      try {
-        const saved = localStorage.getItem('cv_user');
-        if (saved) return JSON.parse(saved);
-      } catch (e) {}
-    }
-    return null;
-  });
-
-  const [loading, setLoading] = useState(() => {
-    if (typeof window !== 'undefined') {
-      try {
-        if (localStorage.getItem('cv_user')) return false;
-      } catch (e) {}
-    }
-    return true;
-  });
+  // Consistent initial state across SSR and client hydration to prevent React hydration mismatch
+  const [user, setUser] = useState(null);
+  const [loading, setLoading] = useState(true);
 
   const [error, setError] = useState(null);
 
@@ -99,6 +83,14 @@ export function AuthProvider({ children }) {
   }, []);
 
   useEffect(() => {
+    // Safely hydrate cached user on client mount without triggering hydration mismatch
+    try {
+      const saved = localStorage.getItem('cv_user');
+      if (saved) {
+        setUser(JSON.parse(saved));
+        setLoading(false);
+      }
+    } catch (e) {}
     checkSession();
   }, [checkSession]);
 
