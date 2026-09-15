@@ -1720,10 +1720,11 @@ export default function AdminDashboard() {
                         onChange={(e) => setCardFilter(e.target.value)}
                       >
                         <option value="all">All Categories</option>
-                        <option value="Home & Kitchen">Home & Kitchen</option>
-                        <option value="High-Ticket Buyers">High-Ticket Buyers</option>
                         <option value="Fashion & Apparel">Fashion & Apparel</option>
+                        <option value="Watches & Wearables">Watches & Wearables</option>
                         <option value="Electronics & Gadgets">Electronics & Gadgets</option>
+                        <option value="Jewellery & Accessories">Jewellery & Accessories</option>
+                        <option value="Home & Kitchen">Home & Kitchen</option>
                         <option value="Beauty & Wellness">Beauty & Wellness</option>
                       </select>
                       <button className="btn-primary" style={{ padding: '10px 20px', borderRadius: 'var(--radius-sm)' }} onClick={() => handleOpenCardModal('add')}>
@@ -2112,10 +2113,11 @@ export default function AdminDashboard() {
                       value={cardForm.category || cardForm.type}
                       onChange={(e) => setCardForm({ ...cardForm, category: e.target.value, type: e.target.value })}
                     >
-                      <option value="Home & Kitchen">Home &amp; Kitchen</option>
-                      <option value="High-Ticket Buyers">High-Ticket Buyers</option>
                       <option value="Fashion & Apparel">Fashion &amp; Apparel</option>
+                      <option value="Watches & Wearables">Watches &amp; Wearables</option>
                       <option value="Electronics & Gadgets">Electronics &amp; Gadgets</option>
+                      <option value="Jewellery & Accessories">Jewellery &amp; Accessories</option>
+                      <option value="Home & Kitchen">Home &amp; Kitchen</option>
                       <option value="Beauty & Wellness">Beauty &amp; Wellness</option>
                       <option value="General">General Dropshipping</option>
                     </select>

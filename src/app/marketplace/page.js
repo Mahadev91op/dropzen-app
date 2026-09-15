@@ -33,10 +33,11 @@ import './page.css';
 
 const CATEGORIES = [
   { id: 'all', label: 'All Bundles' },
-  { id: 'Home & Kitchen', label: 'Home & Kitchen' },
-  { id: 'High-Ticket Buyers', label: 'High-Ticket Buyers' },
   { id: 'Fashion & Apparel', label: 'Fashion & Apparel' },
+  { id: 'Watches & Wearables', label: 'Watches & Wearables' },
   { id: 'Electronics & Gadgets', label: 'Electronics & Gadgets' },
+  { id: 'Jewellery & Accessories', label: 'Jewellery & Accessories' },
+  { id: 'Home & Kitchen', label: 'Home & Kitchen' },
   { id: 'Beauty & Wellness', label: 'Beauty & Wellness' },
 ];
 
