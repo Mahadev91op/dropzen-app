@@ -1,10 +1,5 @@
 import mongoose from 'mongoose';
 
-// Force clear cached model to purge old schema hooks during Next.js hot-reloads
-if (mongoose.models && mongoose.models.Settings) {
-  delete mongoose.models.Settings;
-}
-
 const SettingsSchema = new mongoose.Schema({
   telegramLink: {
     type: String,

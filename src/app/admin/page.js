@@ -67,6 +67,8 @@ export default function AdminDashboard() {
   // Chart interactivity states
   const [hoveredSalesPoint, setHoveredSalesPoint] = useState(null);
   const [hoveredBrand, setHoveredBrand] = useState(null);
+  const [chartMetric, setChartMetric] = useState('revenue'); // 'revenue' | 'orders'
+  const [ordersError, setOrdersError] = useState(null);
 
   // Data states
   const [stats, setStats] = useState({
@@ -310,11 +312,18 @@ export default function AdminDashboard() {
     try {
       if (!isSilent) setLoadingData(true);
       
+      const token = typeof window !== 'undefined' ? localStorage.getItem('cv_token') : null;
+      const authHeaders = {
+        'Cache-Control': 'no-store, no-cache, must-revalidate',
+        'Pragma': 'no-cache',
+        ...(token ? { 'Authorization': `Bearer ${token}` } : {})
+      };
+
       const [ordersRes, cardsRes, usersRes, settingsRes] = await Promise.all([
-        fetch('/api/admin/orders', { cache: 'no-store' }),
-        fetch('/api/cards', { cache: 'no-store' }), 
-        fetch('/api/admin/users', { cache: 'no-store' }),
-        fetch('/api/settings', { cache: 'no-store' })
+        fetch('/api/admin/orders', { headers: authHeaders, credentials: 'include', cache: 'no-store' }),
+        fetch('/api/cards', { headers: authHeaders, credentials: 'include', cache: 'no-store' }), 
+        fetch('/api/admin/users', { headers: authHeaders, credentials: 'include', cache: 'no-store' }),
+        fetch('/api/settings', { headers: authHeaders, credentials: 'include', cache: 'no-store' })
       ]);
 
       let fetchedOrders = [];
@@ -326,7 +335,14 @@ export default function AdminDashboard() {
         if (ordersData.success && Array.isArray(ordersData.orders)) {
           fetchedOrders = ordersData.orders;
           setOrders(fetchedOrders);
+          setOrdersError(null);
         }
+      } else {
+        const errData = await ordersRes.json().catch(() => ({}));
+        const errMsg = errData.error || `Server error (${ordersRes.status}) fetching orders`;
+        console.error('Failed to load orders:', ordersRes.status, errMsg);
+        setOrdersError(errMsg);
+        if (!isSilent) showToast(errMsg, 'error');
       }
 
       if (cardsRes.ok) {
@@ -406,10 +422,17 @@ export default function AdminDashboard() {
     const intervalId = setInterval(async () => {
       if (typeof document !== 'undefined' && document.visibilityState === 'visible') {
         try {
-          const res = await fetch('/api/admin/orders', { cache: 'no-store' });
+          const token = typeof window !== 'undefined' ? localStorage.getItem('cv_token') : null;
+          const authHeaders = {
+            'Cache-Control': 'no-store, no-cache, must-revalidate',
+            'Pragma': 'no-cache',
+            ...(token ? { 'Authorization': `Bearer ${token}` } : {})
+          };
+          const res = await fetch('/api/admin/orders', { headers: authHeaders, credentials: 'include', cache: 'no-store' });
           if (res.ok) {
             const data = await res.json();
             if (data.success && Array.isArray(data.orders)) {
+              setOrdersError(null);
               const freshOrders = data.orders;
               const pendingCount = freshOrders.filter((o) => o.status === 'pending').length;
               
@@ -791,7 +814,7 @@ export default function AdminDashboard() {
     }
   };
 
-  // Helper: Group completed sales in the last 7 days
+  // Helper: Group completed sales and order volume in the last 7 days
   const getSalesChartData = () => {
     const last7Days = [];
     for (let i = 6; i >= 0; i--) {
@@ -801,7 +824,10 @@ export default function AdminDashboard() {
         dateStr: d.toLocaleDateString(undefined, { month: 'short', day: 'numeric' }),
         dateKey: d.toDateString(),
         sales: 0,
-        count: 0
+        pendingSales: 0,
+        count: 0,
+        completedCount: 0,
+        pendingCount: 0,
       });
     }
 
@@ -811,7 +837,11 @@ export default function AdminDashboard() {
       if (dayMatch) {
         dayMatch.count += 1;
         if (o.status === 'completed') {
-          dayMatch.sales += o.pricePaid;
+          dayMatch.sales += (o.pricePaid || 0);
+          dayMatch.completedCount += 1;
+        } else if (o.status === 'pending') {
+          dayMatch.pendingSales += (o.pricePaid || 0);
+          dayMatch.pendingCount += 1;
         }
       }
     });
@@ -819,13 +849,13 @@ export default function AdminDashboard() {
     return last7Days;
   };
 
-  // Helper: Get brand inventory counts
-  const getCardDistribution = () => {
-    const counts = { visa: 0, mastercard: 0, rupay: 0 };
-    cards.forEach(c => {
-      const type = c.type?.toLowerCase();
-      if (counts[type] !== undefined) {
-        counts[type]++;
+  // Helper: Get real live order verification pipeline distribution
+  const getOrderPipelineDistribution = () => {
+    const counts = { completed: 0, pending: 0, failed: 0 };
+    orders.forEach(o => {
+      const st = o.status?.toLowerCase();
+      if (counts[st] !== undefined) {
+        counts[st]++;
       }
     });
     return counts;
@@ -1110,7 +1140,10 @@ export default function AdminDashboard() {
                 {/* SVG Charts Area */}
                 {(() => {
                   const salesChartData = getSalesChartData();
-                  const maxSales = Math.max(...salesChartData.map(d => d.sales), 50);
+                  const isOrdersMetric = chartMetric === 'orders';
+                  const metricMax = isOrdersMetric
+                    ? Math.max(...salesChartData.map(d => d.count), 5)
+                    : Math.max(...salesChartData.map(d => d.sales), 500);
 
                   const chartWidth = 500;
                   const chartHeight = 160;
@@ -1118,9 +1151,10 @@ export default function AdminDashboard() {
                   const paddingY = 20;
 
                   const points = salesChartData.map((d, index) => {
+                    const val = isOrdersMetric ? d.count : d.sales;
                     const x = paddingX + (index * (chartWidth - paddingX * 2)) / (salesChartData.length - 1);
-                    const y = chartHeight - paddingY - (d.sales * (chartHeight - paddingY * 2)) / maxSales;
-                    return { x, y, ...d };
+                    const y = chartHeight - paddingY - (val * (chartHeight - paddingY * 2)) / metricMax;
+                    return { x, y, val, ...d };
                   });
 
                   const pathD = points.length > 0 
@@ -1131,23 +1165,23 @@ export default function AdminDashboard() {
                     ? `${pathD} L ${points[points.length - 1].x} ${chartHeight - paddingY} L ${points[0].x} ${chartHeight - paddingY} Z`
                     : '';
 
-                  const brandData = getCardDistribution();
-                  const totalBrandCount = brandData.visa + brandData.mastercard + brandData.rupay;
+                  const pipelineData = getOrderPipelineDistribution();
+                  const totalOrdersCount = orders.length;
 
                   const getDonutSegments = () => {
-                    if (totalBrandCount === 0) return [];
+                    if (totalOrdersCount === 0) return [];
                     const segments = [
-                      { brand: 'Visa', count: brandData.visa, color: 'var(--primary)', accent: '#4f46e5' },
-                      { brand: 'Mastercard', count: brandData.mastercard, color: '#ff5f00', accent: '#ea580c' },
-                      { brand: 'Rupay', count: brandData.rupay, color: '#e47b25', accent: '#d97706' }
-                    ];
+                      { key: 'completed', label: 'Verified', count: pipelineData.completed, color: '#10b981', accent: '#059669' },
+                      { key: 'pending', label: 'Pending', count: pipelineData.pending, color: '#f59e0b', accent: '#d97706' },
+                      { key: 'failed', label: 'Rejected', count: pipelineData.failed, color: '#ef4444', accent: '#dc2626' }
+                    ].filter(seg => seg.count > 0);
 
                     let currentOffset = 0;
                     const r = 38;
                     const circ = 2 * Math.PI * r;
 
                     return segments.map(seg => {
-                      const pct = seg.count / totalBrandCount;
+                      const pct = seg.count / totalOrdersCount;
                       const strokeDasharray = `${pct * circ} ${circ}`;
                       const strokeDashoffset = currentOffset;
                       currentOffset -= pct * circ;
@@ -1166,15 +1200,53 @@ export default function AdminDashboard() {
                     <div className="admin-analytics-grid">
                       {/* Sales & Orders Chart */}
                       <div className="analytics-card">
-                        <div className="analytics-card-header">
-                          <h3>Business Revenue & Order Activity</h3>
-                          <p>Completed sales performance trend over past 7 days</p>
+                        <div className="analytics-card-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: '12px' }}>
+                          <div>
+                            <h3>Business Revenue & Order Activity</h3>
+                            <p>{isOrdersMetric ? 'Daily order placement activity trend (all verification stages)' : 'Verified & completed GMV revenue trend over past 7 days'}</p>
+                          </div>
+                          <div className="chart-metric-pills" style={{ display: 'inline-flex', background: 'rgba(255, 255, 255, 0.05)', padding: '3px', borderRadius: '8px', border: '1px solid var(--border-color)', gap: '4px' }}>
+                            <button
+                              type="button"
+                              onClick={() => setChartMetric('revenue')}
+                              style={{
+                                padding: '4px 10px',
+                                borderRadius: '6px',
+                                fontSize: '0.78rem',
+                                fontWeight: 700,
+                                border: 'none',
+                                cursor: 'pointer',
+                                background: !isOrdersMetric ? 'var(--primary)' : 'transparent',
+                                color: !isOrdersMetric ? '#ffffff' : 'var(--text-secondary)',
+                                transition: 'all 0.2s ease'
+                              }}
+                            >
+                              ₹ Revenue
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => setChartMetric('orders')}
+                              style={{
+                                padding: '4px 10px',
+                                borderRadius: '6px',
+                                fontSize: '0.78rem',
+                                fontWeight: 700,
+                                border: 'none',
+                                cursor: 'pointer',
+                                background: isOrdersMetric ? 'var(--primary)' : 'transparent',
+                                color: isOrdersMetric ? '#ffffff' : 'var(--text-secondary)',
+                                transition: 'all 0.2s ease'
+                              }}
+                            >
+                              Orders ({orders.length})
+                            </button>
+                          </div>
                         </div>
                         <div className="chart-container" style={{ position: 'relative' }}>
                           <svg viewBox={`0 0 ${chartWidth} ${chartHeight}`} className="sales-svg-chart" style={{ width: '100%', height: 'auto', display: 'block' }}>
                             <defs>
                               <linearGradient id="chartGradient" x1="0" y1="0" x2="0" y2="1">
-                                <stop offset="0%" stopColor="rgba(79, 70, 229, 0.25)" />
+                                <stop offset="0%" stopColor="rgba(79, 70, 229, 0.3)" />
                                 <stop offset="100%" stopColor="rgba(79, 70, 229, 0.0)" />
                               </linearGradient>
                             </defs>
@@ -1185,9 +1257,15 @@ export default function AdminDashboard() {
                             <line x1={paddingX} y1={chartHeight - paddingY} x2={chartWidth - paddingX} y2={chartHeight - paddingY} stroke="var(--border-color)" strokeWidth="1" opacity="0.8" />
 
                             {/* Y-axis Labels */}
-                            <text x={paddingX - 10} y={paddingY + 4} textAnchor="end" fontSize="10" fill="var(--text-secondary)" fontWeight="bold">₹{Math.round(maxSales)}</text>
-                            <text x={paddingX - 10} y={(chartHeight) / 2 + 4} textAnchor="end" fontSize="10" fill="var(--text-secondary)" fontWeight="bold">₹{Math.round(maxSales / 2)}</text>
-                            <text x={paddingX - 10} y={chartHeight - paddingY + 4} textAnchor="end" fontSize="10" fill="var(--text-secondary)" fontWeight="bold">₹0</text>
+                            <text x={paddingX - 10} y={paddingY + 4} textAnchor="end" fontSize="10" fill="var(--text-secondary)" fontWeight="bold">
+                              {isOrdersMetric ? `${Math.round(metricMax)}` : `₹${Math.round(metricMax)}`}
+                            </text>
+                            <text x={paddingX - 10} y={(chartHeight) / 2 + 4} textAnchor="end" fontSize="10" fill="var(--text-secondary)" fontWeight="bold">
+                              {isOrdersMetric ? `${Math.round(metricMax / 2)}` : `₹${Math.round(metricMax / 2)}`}
+                            </text>
+                            <text x={paddingX - 10} y={chartHeight - paddingY + 4} textAnchor="end" fontSize="10" fill="var(--text-secondary)" fontWeight="bold">
+                              {isOrdersMetric ? '0' : '₹0'}
+                            </text>
 
                             {/* Chart Area Fill & Stroke */}
                             {points.length > 0 && (
@@ -1197,7 +1275,7 @@ export default function AdminDashboard() {
                               </>
                             )}
 
-                            {/* Interactivity data dots */}
+                            {/* Interactivity data dots with Touch & Click support */}
                             {points.map((p, i) => (
                               <g key={i}>
                                 <circle
@@ -1210,6 +1288,14 @@ export default function AdminDashboard() {
                                   style={{ transition: 'all 0.2s ease', cursor: 'pointer' }}
                                   onMouseEnter={() => setHoveredSalesPoint(p)}
                                   onMouseLeave={() => setHoveredSalesPoint(null)}
+                                  onTouchStart={(e) => {
+                                    e.stopPropagation();
+                                    setHoveredSalesPoint(p);
+                                  }}
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    setHoveredSalesPoint(prev => prev?.dateKey === p.dateKey ? null : p);
+                                  }}
                                 />
                                 <text
                                   x={p.x}
@@ -1228,40 +1314,43 @@ export default function AdminDashboard() {
                           {hoveredSalesPoint && (
                             <div className="chart-tooltip" style={{
                               position: 'absolute',
-                              top: `${hoveredSalesPoint.y - 50}px`,
-                              left: `${(hoveredSalesPoint.x / chartWidth) * 100}%`,
+                              top: `${Math.max(10, hoveredSalesPoint.y - 65)}px`,
+                              left: `${Math.min(85, Math.max(15, (hoveredSalesPoint.x / chartWidth) * 100))}%`,
                               transform: 'translateX(-50%)',
                               background: 'var(--text-primary)',
                               color: 'var(--bg-secondary)',
-                              padding: '6px 12px',
+                              padding: '8px 14px',
                               borderRadius: '8px',
                               fontSize: '0.8rem',
                               fontWeight: 'bold',
-                              boxShadow: '0 4px 12px rgba(0,0,0,0.15)',
+                              boxShadow: '0 4px 16px rgba(0,0,0,0.25)',
                               pointerEvents: 'none',
                               zIndex: 10,
                               textAlign: 'center',
                               whiteSpace: 'nowrap'
                             }}>
-                              <div>{hoveredSalesPoint.dateKey}</div>
+                              <div style={{ fontWeight: 800 }}>{hoveredSalesPoint.dateKey}</div>
                               <div style={{ color: '#38bdf8', fontSize: '0.9rem', marginTop: '2px' }}>
-                                Sales: ₹{hoveredSalesPoint.sales.toLocaleString('en-IN')} | Orders: {hoveredSalesPoint.count}
+                                Revenue: ₹{hoveredSalesPoint.sales.toLocaleString('en-IN')}
+                              </div>
+                              <div style={{ color: '#cbd5e1', fontSize: '0.75rem', marginTop: '2px' }}>
+                                Orders: {hoveredSalesPoint.count} ({hoveredSalesPoint.completedCount} approved • {hoveredSalesPoint.pendingCount} pending)
                               </div>
                             </div>
                           )}
                         </div>
                       </div>
 
-                      {/* Brand distribution */}
+                      {/* Order Verification Pipeline */}
                       <div className="analytics-card">
                         <div className="analytics-card-header">
-                          <h3>Card Brand Distribution</h3>
-                          <p>Marketplace catalog cataloguing metrics</p>
+                          <h3>Order Verification Pipeline</h3>
+                          <p>Real-time status breakdown of customer orders</p>
                         </div>
                         <div className="brand-chart-layout">
                           <div className="donut-svg-wrapper">
-                            {totalBrandCount === 0 ? (
-                              <div style={{ fontSize: '0.85rem', color: 'var(--text-secondary)' }}>No cards in catalog</div>
+                            {totalOrdersCount === 0 ? (
+                              <div style={{ fontSize: '0.85rem', color: 'var(--text-secondary)' }}>No orders placed yet</div>
                             ) : (
                               <svg viewBox="0 0 100 100" style={{ width: '100px', height: '100px' }}>
                                 <circle cx="50" cy="50" r="38" fill="transparent" stroke="var(--border-color)" strokeWidth="10" opacity="0.3" />
@@ -1273,38 +1362,38 @@ export default function AdminDashboard() {
                                     r="38"
                                     fill="transparent"
                                     stroke={seg.color}
-                                    strokeWidth={hoveredBrand === seg.brand ? 12 : 10}
+                                    strokeWidth={hoveredBrand === seg.key ? 12 : 10}
                                     strokeDasharray={seg.strokeDasharray}
                                     strokeDashoffset={seg.strokeDashoffset}
                                     transform="rotate(-90 50 50)"
                                     strokeLinecap="round"
                                     style={{ transition: 'all 0.3s ease', cursor: 'pointer' }}
-                                    onMouseEnter={() => setHoveredBrand(seg.brand)}
+                                    onMouseEnter={() => setHoveredBrand(seg.key)}
                                     onMouseLeave={() => setHoveredBrand(null)}
                                   />
                                 ))}
                                 <circle cx="50" cy="50" r="28" fill="var(--bg-secondary)" />
-                                <text x="50" y="47" textAnchor="middle" fontSize="9" fontWeight="bold" fill="var(--text-secondary)">TOTAL</text>
-                                <text x="50" y="60" textAnchor="middle" fontSize="13" fontWeight="900" fill="var(--text-primary)">{totalBrandCount}</text>
+                                <text x="50" y="47" textAnchor="middle" fontSize="8" fontWeight="bold" fill="var(--text-secondary)">ORDERS</text>
+                                <text x="50" y="60" textAnchor="middle" fontSize="13" fontWeight="900" fill="var(--text-primary)">{totalOrdersCount}</text>
                               </svg>
                             )}
                           </div>
 
                           <div className="brand-legends">
-                            {totalBrandCount === 0 ? (
-                              <div style={{ fontSize: '0.85rem', color: 'var(--text-secondary)' }}>No brand data.</div>
+                            {totalOrdersCount === 0 ? (
+                              <div style={{ fontSize: '0.85rem', color: 'var(--text-secondary)' }}>No order activity recorded yet.</div>
                             ) : (
                               donutSegments.map((seg, i) => (
                                 <div
                                   key={i}
-                                  className={`legend-item ${hoveredBrand === seg.brand ? 'highlighted' : ''}`}
-                                  onMouseEnter={() => setHoveredBrand(seg.brand)}
+                                  className={`legend-item ${hoveredBrand === seg.key ? 'highlighted' : ''}`}
+                                  onMouseEnter={() => setHoveredBrand(seg.key)}
                                   onMouseLeave={() => setHoveredBrand(null)}
-                                  style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '8px', padding: '4px 8px', borderRadius: '6px', transition: 'background 0.2s ease', cursor: 'pointer' }}
+                                  style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '8px', padding: '6px 8px', borderRadius: '6px', transition: 'background 0.2s ease', cursor: 'pointer' }}
                                 >
                                   <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                                     <span style={{ width: '8px', height: '8px', borderRadius: '50%', background: seg.color }}></span>
-                                    <span style={{ fontSize: '0.85rem', fontWeight: 700, textTransform: 'capitalize' }}>{seg.brand}</span>
+                                    <span style={{ fontSize: '0.85rem', fontWeight: 700 }}>{seg.label}</span>
                                   </div>
                                   <span style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', fontWeight: 'bold' }}>
                                     {seg.count} ({seg.percentage}%)
@@ -1362,7 +1451,15 @@ export default function AdminDashboard() {
                     </div>
                   </div>
 
-                  {filteredOrders.length === 0 ? (
+                  {ordersError ? (
+                    <div className="orders-empty-state" style={{ borderColor: 'rgba(239, 68, 68, 0.3)', background: 'rgba(239, 68, 68, 0.05)', padding: '30px 20px' }}>
+                      <AlertCircle size={36} style={{ color: '#ef4444', margin: '0 auto 10px auto' }} />
+                      <p style={{ color: '#ef4444', fontWeight: 700 }}>{ordersError}</p>
+                      <button type="button" onClick={() => loadDashboardData(false)} className="btn-secondary-compact" style={{ marginTop: '12px', display: 'inline-flex', alignItems: 'center', gap: '6px' }}>
+                        <RefreshCw size={14} /> Retry Loading Orders
+                      </button>
+                    </div>
+                  ) : filteredOrders.length === 0 ? (
                     <div className="orders-empty-state">
                       <ShoppingBag size={32} />
                       <p>{orders.length === 0 ? 'No orders registered on the platform yet.' : 'No orders matched your search criteria.'}</p>
@@ -1660,6 +1757,10 @@ export default function AdminDashboard() {
                                   src={card.image}
                                   alt={title}
                                   style={{ width: '90px', height: '68px', objectFit: 'cover', borderRadius: '10px', flexShrink: 0, border: '1px solid var(--border-color)' }}
+                                  onError={(e) => {
+                                    e.currentTarget.onerror = null;
+                                    e.currentTarget.src = 'https://images.unsplash.com/photo-1584269600464-37b1b58a9fe7?w=800&q=80';
+                                  }}
                                 />
                               ) : (
                                 <div style={{ width: '90px', height: '68px', borderRadius: '10px', background: 'rgba(99, 102, 241, 0.1)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>

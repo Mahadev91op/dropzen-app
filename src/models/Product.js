@@ -1,10 +1,5 @@
 import mongoose from 'mongoose';
 
-// Delete cached model for hot-reloads
-if (mongoose.models && mongoose.models.Product) {
-  delete mongoose.models.Product;
-}
-
 const ProductSchema = new mongoose.Schema(
   {
     id: {

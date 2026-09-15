@@ -50,7 +50,13 @@ export default function ProfileOrders() {
   const fetchOrders = useCallback(async (isSilent = false) => {
     try {
       if (!isSilent) setLoadingOrders(true);
-      const res = await fetch('/api/orders', { cache: 'no-store' });
+      const token = typeof window !== 'undefined' ? localStorage.getItem('cv_token') : null;
+      const headers = {
+        'Cache-Control': 'no-store, no-cache, must-revalidate',
+        'Pragma': 'no-cache',
+        ...(token ? { 'Authorization': `Bearer ${token}` } : {})
+      };
+      const res = await fetch('/api/orders', { headers, credentials: 'include', cache: 'no-store' });
       if (res.ok) {
         const data = await res.json();
         if (data.success && Array.isArray(data.orders)) {

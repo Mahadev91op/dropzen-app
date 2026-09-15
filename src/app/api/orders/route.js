@@ -1,12 +1,19 @@
 import { NextResponse } from 'next/server';
 import dbConnect from '@/lib/db';
-import Order from '@/models/Order';
-import Product from '@/models/Product';
+import User from '@/models/User';
 import Card from '@/models/Card';
+import Product from '@/models/Product';
+import Order from '@/models/Order';
 import { getUserFromRequest } from '@/lib/auth';
 import { validateUtrNumber } from '@/lib/utrValidator';
 
 export const dynamic = 'force-dynamic';
+
+const NO_CACHE_HEADERS = {
+  'Cache-Control': 'no-store, no-cache, must-revalidate, proxy-revalidate, max-age=0',
+  'Pragma': 'no-cache',
+  'Expires': '0',
+};
 
 export async function GET(request) {
   try {
@@ -34,13 +41,13 @@ export async function GET(request) {
           cardSnapshot: productObj,
         };
       });
-      return NextResponse.json({ success: true, orders: sanitized }, { status: 200 });
+      return NextResponse.json({ success: true, orders: sanitized }, { status: 200, headers: NO_CACHE_HEADERS });
     }
 
     const userPayload = await getUserFromRequest(request);
 
     if (!userPayload) {
-      return NextResponse.json({ success: false, error: 'Unauthorized' }, { status: 401 });
+      return NextResponse.json({ success: false, error: 'Unauthorized' }, { status: 401, headers: NO_CACHE_HEADERS });
     }
 
     const rawOrders = await Order.find({ userId: userPayload.id })
@@ -66,10 +73,10 @@ export async function GET(request) {
       };
     });
 
-    return NextResponse.json({ success: true, orders }, { status: 200 });
+    return NextResponse.json({ success: true, orders }, { status: 200, headers: NO_CACHE_HEADERS });
   } catch (error) {
     console.error('Fetch orders error:', error);
-    return NextResponse.json({ success: false, error: 'Failed to fetch orders' }, { status: 500 });
+    return NextResponse.json({ success: false, error: 'Failed to fetch orders' }, { status: 500, headers: NO_CACHE_HEADERS });
   }
 }
 

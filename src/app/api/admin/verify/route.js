@@ -2,6 +2,14 @@ import { NextResponse } from 'next/server';
 import dbConnect from '@/lib/db';
 import Order from '@/models/Order';
 
+export const dynamic = 'force-dynamic';
+
+const NO_CACHE_HEADERS = {
+  'Cache-Control': 'no-store, no-cache, must-revalidate, proxy-revalidate, max-age=0',
+  'Pragma': 'no-cache',
+  'Expires': '0',
+};
+
 // POST: Update order status (Simulate Admin Verification)
 export async function POST(request) {
   try {
@@ -28,10 +36,10 @@ export async function POST(request) {
       success: true,
       message: `Order status updated to ${status} successfully.`,
       order
-    }, { status: 200 });
+    }, { status: 200, headers: NO_CACHE_HEADERS });
 
   } catch (error) {
     console.error('Verify order error:', error);
-    return NextResponse.json({ success: false, error: 'Failed to update order status' }, { status: 500 });
+    return NextResponse.json({ success: false, error: 'Failed to update order status' }, { status: 500, headers: NO_CACHE_HEADERS });
   }
 }

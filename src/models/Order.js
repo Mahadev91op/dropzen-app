@@ -1,9 +1,7 @@
 import mongoose from 'mongoose';
-
-// Clear cached Order model so hot-reloads always use updated schema
-if (mongoose.models && mongoose.models.Order) {
-  delete mongoose.models.Order;
-}
+import './User.js';
+import './Product.js';
+import './Card.js';
 
 const OrderSchema = new mongoose.Schema({
   userId: {

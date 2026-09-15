@@ -5,21 +5,27 @@ import { getUserFromRequest } from '@/lib/auth';
 
 export const dynamic = 'force-dynamic';
 
+const NO_CACHE_HEADERS = {
+  'Cache-Control': 'no-store, no-cache, must-revalidate, proxy-revalidate, max-age=0',
+  'Pragma': 'no-cache',
+  'Expires': '0',
+};
+
 export async function GET(request) {
   try {
     await dbConnect();
     const userPayload = await getUserFromRequest(request);
 
     if (!userPayload || !userPayload.isAdmin) {
-      return NextResponse.json({ success: false, error: 'Forbidden. Admin access required.' }, { status: 403 });
+      return NextResponse.json({ success: false, error: 'Forbidden. Admin access required.' }, { status: 403, headers: NO_CACHE_HEADERS });
     }
 
     const users = await User.find({}).select('-password').sort({ createdAt: -1 });
 
-    return NextResponse.json({ success: true, users }, { status: 200 });
+    return NextResponse.json({ success: true, users }, { status: 200, headers: NO_CACHE_HEADERS });
   } catch (error) {
     console.error('Fetch admin users error:', error);
-    return NextResponse.json({ success: false, error: 'Failed to fetch users' }, { status: 500 });
+    return NextResponse.json({ success: false, error: 'Failed to fetch users' }, { status: 500, headers: NO_CACHE_HEADERS });
   }
 }
 

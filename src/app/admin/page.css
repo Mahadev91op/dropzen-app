@@ -260,8 +260,18 @@
   margin: 4px 0 0 0;
 }
 
-.sales-svg-chart circle:hover {
-  filter: drop-shadow(0 0 4px var(--primary));
+.sales-svg-chart circle {
+  touch-action: manipulation;
+  cursor: pointer;
+}
+
+.sales-svg-chart circle:hover,
+.sales-svg-chart circle:active {
+  filter: drop-shadow(0 0 6px var(--primary));
+}
+
+.chart-metric-pills button:hover {
+  filter: brightness(1.1);
 }
 
 .brand-chart-layout {
@@ -1076,6 +1086,26 @@
   .admin-analytics-grid {
     grid-template-columns: 1fr;
     gap: 16px;
+  }
+
+  .chart-metric-pills {
+    width: 100%;
+  }
+
+  .chart-metric-pills button {
+    flex: 1;
+    text-align: center;
+    padding: 6px 10px !important;
+  }
+
+  .brand-chart-layout {
+    flex-direction: column;
+    gap: 16px;
+    align-items: center;
+  }
+
+  .brand-legends {
+    width: 100%;
   }
 
   /* Dynamic Search-Filter Layout on Mobile */

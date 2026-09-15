@@ -157,42 +157,23 @@ export default function Home() {
   const heroStatsRef = useRef(null);
 
   const fetchProducts = useCallback(async () => {
-    const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 8000);
-
     try {
-      const res = await fetch('/api/products', { signal: controller.signal });
-      clearTimeout(timeoutId);
+      const res = await fetch('/api/products', { cache: 'no-store' });
       if (res.ok) {
         const data = await res.json();
         const list = data.products || data.cards || [];
         if (Array.isArray(list) && list.length > 0) {
           setProducts(list);
-          try {
-            sessionStorage.setItem('dropzen_products_cache', JSON.stringify(list));
-          } catch (e) {}
         }
       }
     } catch (error) {
       console.error('Error fetching products:', error);
     } finally {
-      clearTimeout(timeoutId);
       setLoadingProducts(false);
     }
   }, []);
 
   useEffect(() => {
-    try {
-      const saved = sessionStorage.getItem('dropzen_products_cache');
-      if (saved) {
-        const parsed = JSON.parse(saved);
-        if (Array.isArray(parsed) && parsed.length > 0) {
-          setProducts(parsed);
-          setLoadingProducts(false);
-        }
-      }
-    } catch (e) {}
-
     fetch('/api/settings', { cache: 'no-store' })
       .then((res) => res.json())
       .then((data) => {
@@ -474,6 +455,10 @@ export default function Home() {
                             alt={product.title}
                             className="product-lead-img"
                             loading="lazy"
+                            onError={(e) => {
+                              e.currentTarget.onerror = null;
+                              e.currentTarget.src = 'https://images.unsplash.com/photo-1584269600464-37b1b58a9fe7?w=800&q=80';
+                            }}
                           />
                         ) : (
                           <div className="product-lead-placeholder-img">
