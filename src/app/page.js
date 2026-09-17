@@ -39,7 +39,10 @@ import {
   Layers,
   ArrowUpRight,
   ShieldCheck,
-  AlertCircle
+  AlertCircle,
+  Minus,
+  Plus,
+  Maximize2
 } from 'lucide-react';
 
 import confetti from 'canvas-confetti';
@@ -145,6 +148,36 @@ export default function Home() {
   // Sample Preview Modal state
   const [previewModalProduct, setPreviewModalProduct] = useState(null);
 
+  // Image Zoom Lightbox state
+  const [zoomedImage, setZoomedImage] = useState(null);
+
+  // Product Quantities state: { [productId]: quantity }
+  const [quantities, setQuantities] = useState({});
+
+  // Close zoomed image on Escape key
+  useEffect(() => {
+    const handleKeyDown = (e) => {
+      if (e.key === 'Escape') {
+        setZoomedImage(null);
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, []);
+
+  const getProductQuantity = (productId, minQty = 1) => {
+    const effectiveMin = Math.max(1, Number(minQty) || 1);
+    const current = quantities[productId];
+    if (current === undefined || current === null) return effectiveMin;
+    return Math.max(effectiveMin, current);
+  };
+
+  const handleQuantityChange = (productId, newQty, minQty = 1) => {
+    const effectiveMin = Math.max(1, Number(minQty) || 1);
+    const safeQty = Math.max(effectiveMin, Number(newQty) || effectiveMin);
+    setQuantities((prev) => ({ ...prev, [productId]: safeQty }));
+  };
+
   // ROI Calculator state
   const [dailyOrders, setDailyOrders] = useState(25);
   const [marginPerOrder, setMarginPerOrder] = useState(650);
@@ -221,18 +254,27 @@ export default function Home() {
     setTimeout(() => setNotification(null), 5000);
   };
 
-  const handleBuyProduct = (product) => {
+  const handleBuyProduct = (product, qty) => {
     if (!user) {
       showToast('Please sign in or register to purchase leads', 'warning');
       handleOpenAuth('signin');
       return;
     }
-    setSelectedProduct(product);
+    const minQty = Math.max(1, product.minQuantity || 1);
+    const selectedQty = Math.max(minQty, Number(qty) || getProductQuantity(product._id, minQty));
+    setSelectedProduct({
+      ...product,
+      selectedQuantity: selectedQty,
+      totalPrice: (product.price || 999) * selectedQty,
+    });
     setPaymentModalOpen(true);
   };
 
   const handleConfirmPayment = async (paymentData) => {
     if (!selectedProduct) return;
+
+    const qty = selectedProduct.selectedQuantity || selectedProduct.minQuantity || 1;
+    const totalAmount = selectedProduct.totalPrice || (selectedProduct.price || 999) * qty;
 
     try {
       const payload =
@@ -240,11 +282,15 @@ export default function Home() {
           ? {
               productId: selectedProduct._id,
               cardId: selectedProduct._id,
+              quantity: qty,
+              pricePaid: totalAmount,
               utrNumber: paymentData,
             }
           : {
               productId: selectedProduct._id,
               cardId: selectedProduct._id,
+              quantity: qty,
+              pricePaid: totalAmount,
               ...paymentData,
             };
 
@@ -444,10 +490,24 @@ export default function Home() {
                   const retail = product.resellPrice || 899;
                   const estProfit = retail - wholesale;
                   const records = product.recordsCount || 5000;
+                  const minQty = Math.max(1, product.minQuantity || 1);
+                  const currentQty = getProductQuantity(product._id, minQty);
+                  const totalPrice = (product.price || 999) * currentQty;
+                  const originalTotalPrice = product.originalPrice ? product.originalPrice * currentQty : null;
 
                   return (
                     <div className="product-lead-card" key={product._id}>
-                      <div className="product-lead-image-wrap">
+                      {/* Image Header with Badges & Click to Zoom */}
+                      <div 
+                        className="product-lead-image-wrap"
+                        onClick={() => setZoomedImage({
+                          url: product.image || 'https://images.unsplash.com/photo-1584269600464-37b1b58a9fe7?w=1200&q=85',
+                          title: product.title,
+                          badge: product.badge,
+                          category: product.category,
+                        })}
+                        title="Click to zoom image"
+                      >
                         {product.image ? (
                           /* eslint-disable-next-line @next/next/no-img-element */
                           <img
@@ -465,6 +525,12 @@ export default function Home() {
                             <ShoppingBag size={48} color="#818cf8" />
                           </div>
                         )}
+                        <div className="image-zoom-overlay">
+                          <div className="zoom-badge">
+                            <Maximize2 size={13} />
+                            <span>Click to View</span>
+                          </div>
+                        </div>
                         <div className="lead-badge-top-left">
                           <span className="badge-tag">{product.badge || '🔥 Trending'}</span>
                         </div>
@@ -543,12 +609,55 @@ export default function Home() {
                           <Eye size={14} /> Preview Sample Leads
                         </button>
 
+                        {/* Quantity Selector */}
+                        <div className="card-qty-selector-wrap">
+                          <div className="card-qty-label-group">
+                            <span className="card-qty-label">Quantity</span>
+                            <span className="card-min-qty-hint">
+                              Min: <strong>{minQty}</strong> {minQty > 1 ? 'units' : 'unit'}
+                            </span>
+                          </div>
+                          <div className="card-qty-control">
+                            <button
+                              type="button"
+                              className="qty-btn qty-btn-minus"
+                              disabled={currentQty <= minQty}
+                              onClick={() => handleQuantityChange(product._id, currentQty - 1, minQty)}
+                              aria-label="Decrease quantity"
+                            >
+                              <Minus size={14} />
+                            </button>
+                            <input
+                              type="number"
+                              min={minQty}
+                              value={currentQty}
+                              onChange={(e) => {
+                                const val = parseInt(e.target.value);
+                                handleQuantityChange(product._id, isNaN(val) ? minQty : Math.max(minQty, val), minQty);
+                              }}
+                              className="qty-number-input"
+                              aria-label="Quantity"
+                            />
+                            <button
+                              type="button"
+                              className="qty-btn qty-btn-plus"
+                              onClick={() => handleQuantityChange(product._id, currentQty + 1, minQty)}
+                              aria-label="Increase quantity"
+                            >
+                              <Plus size={14} />
+                            </button>
+                          </div>
+                        </div>
+
                         <div className="pricing-and-buy-row">
                           <div className="lead-pricing-block">
-                            <div className="lead-price-now">₹{product.price}</div>
-                            {product.originalPrice && product.originalPrice > product.price && (
+                            <div className="lead-price-now">₹{totalPrice.toLocaleString()}</div>
+                            <div className="lead-unit-calc">
+                              ₹{product.price} × {currentQty} {currentQty > 1 ? 'units' : 'unit'}
+                            </div>
+                            {originalTotalPrice && originalTotalPrice > totalPrice && (
                               <div className="lead-price-strikethrough">
-                                <span className="old-price">₹{product.originalPrice}</span>
+                                <span className="old-price">₹{originalTotalPrice.toLocaleString()}</span>
                                 <span className="discount-tag">{product.discount || '50% OFF'}</span>
                               </div>
                             )}
@@ -557,9 +666,9 @@ export default function Home() {
                           <button
                             type="button"
                             className="btn-buy-leads"
-                            onClick={() => handleBuyProduct(product)}
+                            onClick={() => handleBuyProduct(product, currentQty)}
                           >
-                            <span>Buy Leads</span>
+                            <span>Buy {currentQty > 1 ? `(${currentQty})` : ''}</span>
                             <ArrowRight size={15} />
                           </button>
                         </div>
@@ -1122,6 +1231,37 @@ export default function Home() {
                 <span>Unlock All Leads &bull; ₹{previewModalProduct.price}</span>
                 <ArrowRight size={16} />
               </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Image Lightbox Zoom Modal */}
+      {zoomedImage && (
+        <div className="image-lightbox-overlay" onClick={() => setZoomedImage(null)}>
+          <div className="image-lightbox-container" onClick={(e) => e.stopPropagation()}>
+            <button
+              type="button"
+              className="image-lightbox-close"
+              onClick={() => setZoomedImage(null)}
+              aria-label="Close image preview"
+            >
+              <X size={20} />
+            </button>
+            <div className="image-lightbox-img-wrap">
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img
+                src={zoomedImage.url}
+                alt={zoomedImage.title || 'Product Full Image'}
+                className="image-lightbox-img"
+              />
+            </div>
+            <div className="image-lightbox-caption">
+              <div className="lightbox-caption-left">
+                <h3>{zoomedImage.title}</h3>
+                {zoomedImage.category && <span className="category-pill">{zoomedImage.category}</span>}
+              </div>
+              {zoomedImage.badge && <span className="badge-tag">{zoomedImage.badge}</span>}
             </div>
           </div>
         </div>

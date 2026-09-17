@@ -76,7 +76,8 @@ const ProductSchema = new mongoose.Schema(
     },
     minQuantity: {
       type: Number,
-      default: 10,
+      default: 1,
+      min: 1,
     },
     highlightFeatures: {
       type: [String],

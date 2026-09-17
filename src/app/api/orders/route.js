@@ -178,9 +178,10 @@ export async function POST(request) {
       return NextResponse.json({ success: false, error: 'Product not found' }, { status: 404 });
     }
 
-    const orderQty = Math.max(10, Number(quantity) || 10);
-    const unitPrice = product.price || product.entryFee || 999;
-    const finalPrice = unitPrice; // Bundle price as listed on product
+    const minAllowed = Math.max(1, Number(product.minQuantity) || 1);
+    const orderQty = Math.max(minAllowed, Number(quantity) || minAllowed);
+    const unitPrice = Number(product.price || product.entryFee) || 999;
+    const finalPrice = unitPrice * orderQty;
 
     // Prepare default customer leads for this product
     const leadRows = (product.sampleRows && product.sampleRows.length > 0)
@@ -227,6 +228,9 @@ export async function POST(request) {
         title: product.title || product.name,
         category: product.category || product.type || 'Home & Kitchen',
         price: finalPrice,
+        unitPrice: unitPrice,
+        quantity: orderQty,
+        minQuantity: minAllowed,
         image: product.image || '',
         badge: product.badge || '🔥 Trending',
         recordsCount: product.recordsCount || 5000,

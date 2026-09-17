@@ -69,7 +69,7 @@ export async function POST(request) {
       image: image || '',
       meeshoCost: Number(meeshoCost) || 199,
       resellPrice: Number(resellPrice) || Number(price),
-      minQuantity: Number(minQuantity) || 10,
+      minQuantity: Math.max(1, Number(minQuantity) || 1),
       recordsCount: Number(recordsCount) || 5000,
       highlightFeatures: Array.isArray(highlightFeatures) ? highlightFeatures : [],
       sampleRows: Array.isArray(sampleRows) ? sampleRows : [],
@@ -98,6 +98,10 @@ export async function PUT(request) {
 
     if (!targetId) {
       return NextResponse.json({ success: false, error: 'Product ID is required.' }, { status: 400 });
+    }
+
+    if (updateData.minQuantity !== undefined) {
+      updateData.minQuantity = Math.max(1, Number(updateData.minQuantity) || 1);
     }
 
     const updatedProduct = await Product.findByIdAndUpdate(targetId, updateData, { new: true });

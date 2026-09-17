@@ -131,6 +131,7 @@ export default function AdminDashboard() {
     price: 999,
     originalPrice: 2499,
     recordsCount: 5000,
+    minQuantity: 1,
     meeshoCost: 199,
     resellPrice: 899,
     badge: '🔥 Trending',
@@ -640,6 +641,7 @@ export default function AdminDashboard() {
         price: card.price || card.entryFee || 999,
         originalPrice: card.originalPrice || 2499,
         recordsCount: card.recordsCount || card.qty || 5000,
+        minQuantity: card.minQuantity || 1,
         meeshoCost: card.meeshoCost || 199,
         resellPrice: card.resellPrice || 899,
         badge: card.badge || '🔥 Trending',
@@ -660,6 +662,7 @@ export default function AdminDashboard() {
         price: 999,
         originalPrice: 2499,
         recordsCount: 5000,
+        minQuantity: 1,
         meeshoCost: 199,
         resellPrice: 899,
         badge: '🔥 Trending',
@@ -1757,24 +1760,27 @@ export default function AdminDashboard() {
                                 <img
                                   src={card.image}
                                   alt={title}
-                                  style={{ width: '90px', height: '68px', objectFit: 'cover', borderRadius: '10px', flexShrink: 0, border: '1px solid var(--border-color)' }}
+                                  style={{ width: '76px', height: '76px', aspectRatio: '1 / 1', objectFit: 'cover', borderRadius: '10px', flexShrink: 0, border: '1px solid var(--border-color)' }}
                                   onError={(e) => {
                                     e.currentTarget.onerror = null;
                                     e.currentTarget.src = 'https://images.unsplash.com/photo-1584269600464-37b1b58a9fe7?w=800&q=80';
                                   }}
                                 />
                               ) : (
-                                <div style={{ width: '90px', height: '68px', borderRadius: '10px', background: 'rgba(99, 102, 241, 0.1)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                                <div style={{ width: '76px', height: '76px', aspectRatio: '1 / 1', borderRadius: '10px', background: 'rgba(99, 102, 241, 0.1)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
                                   <ShoppingBag size={28} color="#818cf8" />
                                 </div>
                               )}
                               <div style={{ flex: 1, minWidth: 0 }}>
-                                <div style={{ display: 'flex', gap: '6px', alignItems: 'center', marginBottom: '4px' }}>
+                                <div style={{ display: 'flex', gap: '6px', alignItems: 'center', marginBottom: '4px', flexWrap: 'wrap' }}>
                                   <span style={{ fontSize: '0.72rem', background: 'rgba(99, 102, 241, 0.12)', color: 'var(--primary)', padding: '2px 7px', borderRadius: '4px', fontWeight: 700 }}>
                                     {category}
                                   </span>
                                   <span style={{ fontSize: '0.72rem', background: 'rgba(245, 158, 11, 0.12)', color: '#fbbf24', padding: '2px 7px', borderRadius: '4px', fontWeight: 600 }}>
                                     {card.badge || '🔥 Trending'}
+                                  </span>
+                                  <span style={{ fontSize: '0.72rem', background: 'rgba(59, 130, 246, 0.1)', color: '#3b82f6', padding: '2px 7px', borderRadius: '4px', fontWeight: 700 }}>
+                                    Min: {card.minQuantity || 1} {(card.minQuantity || 1) > 1 ? 'units' : 'unit'}
                                   </span>
                                 </div>
                                 <h4 style={{ margin: 0, fontSize: '0.96rem', fontWeight: 800, color: 'var(--text-primary)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }} title={title}>
@@ -2166,6 +2172,24 @@ export default function AdminDashboard() {
                       placeholder="e.g. 3499"
                       value={cardForm.originalPrice || ''}
                       onChange={(e) => setCardForm({ ...cardForm, originalPrice: Number(e.target.value) })}
+                    />
+                  </div>
+                </div>
+
+                <div className="admin-form-row">
+                  <div className="admin-form-group">
+                    <label className="admin-form-label">
+                      Minimum Order Quantity (Min Qty)
+                      <span style={{ fontSize: '0.72rem', color: '#64748b', fontWeight: 400, marginLeft: '6px' }}>(Client cannot order less)</span>
+                    </label>
+                    <input
+                      type="number"
+                      min="1"
+                      className="admin-form-input"
+                      placeholder="e.g. 1"
+                      value={cardForm.minQuantity ?? 1}
+                      onChange={(e) => setCardForm({ ...cardForm, minQuantity: Math.max(1, parseInt(e.target.value) || 1) })}
+                      required
                     />
                   </div>
                   <div className="admin-form-group">

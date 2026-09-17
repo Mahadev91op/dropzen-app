@@ -79,7 +79,9 @@ export default function PaymentModal({
   };
 
   const effectiveUpiId = (upiId && typeof upiId === 'string' && upiId.trim()) ? upiId.trim() : 'mahadevtanti191@okaxis';
-  const inrAmount = card?.price || card?.entryFee || 999;
+  const selectedQty = Math.max(1, Number(card?.selectedQuantity || card?.quantity || card?.minQuantity) || 1);
+  const unitPrice = Number(card?.price || card?.entryFee) || 999;
+  const inrAmount = card?.totalPrice ? Number(card.totalPrice) : (unitPrice * selectedQty);
   const itemIdentifier = (card?.title || card?.name || 'Dropzen_Leads').replace(/\s+/g, '_');
   // Construct standard NPCI UPI intent link with exact locked amount
   const upiParams = `pa=${encodeURIComponent(effectiveUpiId)}&pn=${encodeURIComponent("Dropzen")}&am=${inrAmount}&cu=INR&tn=${encodeURIComponent(`Order_${itemIdentifier}_${refreshCount}`)}`;
@@ -262,7 +264,9 @@ export default function PaymentModal({
         utrNumber: cleanUtr,
         senderUpiId: cleanSender,
         paymentApp,
-        paymentScreenshot
+        paymentScreenshot,
+        quantity: selectedQty,
+        pricePaid: inrAmount,
       });
     } catch (err) {
       setError(err.message || 'Failed to submit payment. Please verify details.');
@@ -294,11 +298,13 @@ export default function PaymentModal({
             <div style={{ fontWeight: 700, color: '#f8fafc', fontSize: '1rem', marginBottom: '4px' }}>
               {card?.title || card?.name || 'Verified Dropshipping Leads'}
             </div>
-            <div style={{ fontSize: '0.8rem', color: '#94a3b8', marginBottom: '4px' }}>
-              Includes: {card?.recordsCount ? `${card.recordsCount.toLocaleString()}+ Real Buyer Records` : 'Min 10 Verified Orders'} (Excel Delivery)
+            <div style={{ fontSize: '0.82rem', color: '#94a3b8', marginBottom: '6px', display: 'flex', gap: '8px', alignItems: 'center', flexWrap: 'wrap' }}>
+              <span>Quantity: <strong style={{ color: '#e2e8f0' }}>{selectedQty} {selectedQty > 1 ? 'units' : 'unit'}</strong></span>
+              <span>&bull;</span>
+              <span>Rate: <strong style={{ color: '#e2e8f0' }}>₹{unitPrice}</strong>/unit</span>
             </div>
             <div className="price-value-stack">
-              <span className="price-usd">₹{inrAmount} INR</span>
+              <span className="price-usd">Total: ₹{inrAmount} INR</span>
             </div>
           </div>
 

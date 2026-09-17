@@ -444,6 +444,12 @@ export default function ProfileOrders() {
                                 <div className="metric-value highlight">₹{order.pricePaid} INR</div>
                               </div>
                               <div className="metric-box">
+                                <div className="metric-label">Order Quantity</div>
+                                <div className="metric-value">
+                                  {order.quantity || 1} {(order.quantity || 1) > 1 ? 'units' : 'unit'}
+                                </div>
+                              </div>
+                              <div className="metric-box">
                                 <div className="metric-label">Total Leads Dataset</div>
                                 <div className="metric-value">
                                   {targetLeadCount.toLocaleString()} Verified Buyers

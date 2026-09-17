@@ -34,7 +34,7 @@ export async function POST(request) {
       meeshoCost: Number(body.meeshoCost) || 199,
       resellPrice: Number(body.resellPrice) || 899,
       recordsCount: Number(body.recordsCount || body.qty || 5000),
-      minQuantity: Number(body.minQuantity || 10),
+      minQuantity: Math.max(1, Number(body.minQuantity) || 1),
       highlightFeatures: Array.isArray(body.highlightFeatures) ? body.highlightFeatures : [],
       sampleRows: Array.isArray(body.sampleRows) ? body.sampleRows : [],
     });
@@ -70,6 +70,9 @@ export async function PUT(request) {
     }
     if (updateData.qty && !updateData.recordsCount) {
       updateData.recordsCount = Number(updateData.qty);
+    }
+    if (updateData.minQuantity !== undefined) {
+      updateData.minQuantity = Math.max(1, Number(updateData.minQuantity) || 1);
     }
 
     const updated = await Product.findByIdAndUpdate(targetId, updateData, { new: true });
