@@ -45,12 +45,9 @@ export async function getUserFromRequest(request) {
 
     const adminEmails = process.env.ADMIN_EMAILS
       ? process.env.ADMIN_EMAILS.split(',').map(e => e.trim().toLowerCase())
-      : [];
+      : ['mahadevtanti191@gmail.com'];
 
-    const isEmailAdmin = decoded.email && (
-      decoded.email.toLowerCase().includes('admin') ||
-      adminEmails.includes(decoded.email.toLowerCase())
-    );
+    const isEmailAdmin = decoded.email && adminEmails.includes(decoded.email.toLowerCase());
 
     if (decoded.isAdmin || isEmailAdmin) {
       return { ...decoded, isAdmin: true };

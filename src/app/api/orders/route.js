@@ -59,9 +59,11 @@ export async function GET(request) {
 
     const orders = rawOrders.map((order) => {
       const productObj = order.productId || (order.productSnapshot && order.productSnapshot.title ? order.productSnapshot : null) || order.cardId || order.cardSnapshot || {};
-      
+      const isCompleted = order.status === 'completed';
+
       return {
         ...order,
+        excelData: isCompleted ? (order.excelData || []) : [],
         productId: productObj,
         cardId: {
           _id: productObj._id || ('prod-' + order._id),
@@ -224,7 +226,7 @@ export async function POST(request) {
       senderUpiId: trimmedSender,
       paymentApp: paymentApp || 'other',
       paymentScreenshot,
-      excelData: leadRows,
+      excelData: [],
       productSnapshot: {
         _id: product._id,
         title: product.title || product.name,
@@ -232,7 +234,7 @@ export async function POST(request) {
         price: finalPrice,
         unitPrice: unitPrice,
         quantity: orderQty,
-        minQuantity: minAllowed,
+        minQuantity: globalMinAllowed,
         image: product.image || '',
         badge: product.badge || '🔥 Trending',
         recordsCount: product.recordsCount || 5000,

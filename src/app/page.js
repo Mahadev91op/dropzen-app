@@ -262,7 +262,7 @@ export default function Home() {
       handleOpenAuth('signin');
       return;
     }
-    const minQty = Math.max(1, product.minQuantity || 1);
+    const minQty = globalMinQty;
     const selectedQty = Math.max(minQty, Number(qty) || getProductQuantity(product._id, minQty));
     setSelectedProduct({
       ...product,
@@ -275,7 +275,7 @@ export default function Home() {
   const handleConfirmPayment = async (paymentData) => {
     if (!selectedProduct) return;
 
-    const qty = selectedProduct.selectedQuantity || selectedProduct.minQuantity || 1;
+    const qty = selectedProduct.selectedQuantity || globalMinQty;
     const totalAmount = selectedProduct.totalPrice || (selectedProduct.price || 999) * qty;
 
     try {

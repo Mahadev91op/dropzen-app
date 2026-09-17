@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import dbConnect from '@/lib/db';
 import Order from '@/models/Order';
+import { getUserFromRequest } from '@/lib/auth';
 
 export const dynamic = 'force-dynamic';
 
@@ -10,10 +11,15 @@ const NO_CACHE_HEADERS = {
   'Expires': '0',
 };
 
-// POST: Update order status (Simulate Admin Verification)
+// POST: Update order status (Admin Verification)
 export async function POST(request) {
   try {
     await dbConnect();
+    const userPayload = await getUserFromRequest(request);
+    if (!userPayload || !userPayload.isAdmin) {
+      return NextResponse.json({ success: false, error: 'Forbidden. Admin access required.' }, { status: 403, headers: NO_CACHE_HEADERS });
+    }
+
     const { orderId, status } = await request.json();
 
     if (!orderId || !status) {

@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import dbConnect from '@/lib/db';
 import Product from '@/models/Product';
+import { getUserFromRequest } from '@/lib/auth';
 
 export const dynamic = 'force-dynamic';
 
@@ -60,6 +61,11 @@ export async function GET(request) {
 export async function POST(request) {
   try {
     await dbConnect();
+    const userPayload = await getUserFromRequest(request);
+    if (!userPayload || !userPayload.isAdmin) {
+      return NextResponse.json({ success: false, error: 'Forbidden. Admin access required.' }, { status: 403 });
+    }
+
     const body = await request.json();
 
     if (!body.title || !body.price) {

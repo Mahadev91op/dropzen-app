@@ -54,9 +54,11 @@ export async function POST(request) {
     // Hash password
     const hashedPassword = await bcrypt.hash(password, 10);
 
-    // Determine if user is admin
-    const isAdminEmail = cleanEmail.includes('admin') || 
-                         (process.env.ADMIN_EMAILS && process.env.ADMIN_EMAILS.split(',').map(e => e.trim().toLowerCase()).includes(cleanEmail));
+    // Determine if user is admin (only explicit admin emails)
+    const adminEmails = process.env.ADMIN_EMAILS
+      ? process.env.ADMIN_EMAILS.split(',').map(e => e.trim().toLowerCase())
+      : ['mahadevtanti191@gmail.com'];
+    const isAdminEmail = adminEmails.includes(cleanEmail);
 
     // Create user
     const newUser = await User.create({
