@@ -4,6 +4,7 @@ import User from '@/models/User';
 import Card from '@/models/Card';
 import Product from '@/models/Product';
 import Order from '@/models/Order';
+import Settings from '@/models/Settings';
 import { getUserFromRequest } from '@/lib/auth';
 import { validateUtrNumber } from '@/lib/utrValidator';
 
@@ -178,8 +179,9 @@ export async function POST(request) {
       return NextResponse.json({ success: false, error: 'Product not found' }, { status: 404 });
     }
 
-    const minAllowed = Math.max(1, Number(product.minQuantity) || 1);
-    const orderQty = Math.max(minAllowed, Number(quantity) || minAllowed);
+    const siteSettings = await Settings.findOne().lean();
+    const globalMinAllowed = Math.max(1, Number(siteSettings?.globalMinQuantity) || 1);
+    const orderQty = Math.max(globalMinAllowed, Number(quantity) || globalMinAllowed);
     const unitPrice = Number(product.price || product.entryFee) || 999;
     const finalPrice = unitPrice * orderQty;
 

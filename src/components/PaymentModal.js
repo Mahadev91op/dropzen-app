@@ -295,13 +295,13 @@ export default function PaymentModal({
         {/* Pricing breakdown & Timer */}
         <div className="payment-pricing-banner">
           <div className="price-details">
-            <div style={{ fontWeight: 700, color: '#f8fafc', fontSize: '1rem', marginBottom: '4px' }}>
+            <div className="payment-bundle-name">
               {card?.title || card?.name || 'Verified Dropshipping Leads'}
             </div>
-            <div style={{ fontSize: '0.82rem', color: '#94a3b8', marginBottom: '6px', display: 'flex', gap: '8px', alignItems: 'center', flexWrap: 'wrap' }}>
-              <span>Quantity: <strong style={{ color: '#e2e8f0' }}>{selectedQty} {selectedQty > 1 ? 'units' : 'unit'}</strong></span>
-              <span>&bull;</span>
-              <span>Rate: <strong style={{ color: '#e2e8f0' }}>₹{unitPrice}</strong>/unit</span>
+            <div className="payment-bundle-meta">
+              <span>Quantity: <strong className="meta-highlight">{selectedQty} {selectedQty > 1 ? 'units' : 'unit'}</strong></span>
+              <span className="meta-bullet">&bull;</span>
+              <span>Rate: <strong className="meta-highlight">₹{unitPrice}</strong>/unit</span>
             </div>
             <div className="price-value-stack">
               <span className="price-usd">Total: ₹{inrAmount} INR</span>

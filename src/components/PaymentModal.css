@@ -66,13 +66,13 @@
   font-size: 1.15rem;
   font-weight: 800;
   margin: 0;
-  color: var(--text-primary);
+  color: #0f172a !important;
 }
 
 .close-btn {
   background: none;
   border: none;
-  color: var(--text-secondary);
+  color: #64748b;
   cursor: pointer;
   padding: 4px;
   display: flex;
@@ -88,12 +88,43 @@
 
 /* Pricing & Timer Panel */
 .payment-pricing-banner {
-  background: var(--bg-secondary);
-  border-bottom: 1px solid var(--border-color);
+  background: #f8fafc !important;
+  border-bottom: 1px solid #e2e8f0 !important;
   padding: 16px 20px;
   display: flex;
   justify-content: space-between;
   align-items: center;
+  gap: 12px;
+}
+
+.payment-bundle-name {
+  font-weight: 800;
+  color: #0f172a !important;
+  font-size: 1.05rem;
+  margin-bottom: 4px;
+  line-height: 1.35;
+}
+
+.payment-bundle-meta {
+  font-size: 0.84rem;
+  color: #475569 !important;
+  margin-bottom: 6px;
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  flex-wrap: wrap;
+}
+
+.payment-bundle-meta .meta-highlight {
+  color: #312e81 !important;
+  background: rgba(99, 102, 241, 0.12);
+  padding: 1px 7px;
+  border-radius: 4px;
+  font-weight: 800;
+}
+
+.payment-bundle-meta .meta-bullet {
+  color: #94a3b8;
 }
 
 .price-details {
@@ -104,7 +135,7 @@
 
 .price-label {
   font-size: 0.75rem;
-  color: var(--text-secondary);
+  color: #475569 !important;
   font-weight: 700;
   text-transform: uppercase;
   letter-spacing: 0.5px;
@@ -117,9 +148,9 @@
 }
 
 .price-usd {
-  font-size: 1.4rem;
+  font-size: 1.35rem;
   font-weight: 900;
-  color: var(--text-primary);
+  color: #059669 !important;
 }
 
 .price-inr {
@@ -130,7 +161,7 @@
 
 .exchange-rate {
   font-size: 0.65rem;
-  color: var(--text-secondary);
+  color: #64748b !important;
 }
 
 .payment-timer {
@@ -386,11 +417,16 @@
 }
 
 .step-txt {
-  font-size: 0.8rem;
-  color: var(--text-secondary);
+  font-size: 0.82rem;
+  color: #334155 !important;
   margin: 0;
-  line-height: 1.4;
-  font-weight: 500;
+  line-height: 1.45;
+  font-weight: 600;
+}
+
+.step-txt strong {
+  color: #0f172a !important;
+  font-weight: 800;
 }
 
 .upi-id-copy-row {
@@ -398,21 +434,25 @@
   display: flex;
   justify-content: space-between;
   align-items: center;
-  background: var(--bg-secondary);
-  border: 1px solid var(--border-color);
+  background: #f1f5f9 !important;
+  border: 1px solid #cbd5e1 !important;
   padding: 8px 12px;
   border-radius: 8px;
   width: 100%;
 }
 
 .upi-id-label {
-  font-size: 0.75rem;
-  color: var(--text-secondary);
+  font-size: 0.8rem;
+  color: #334155 !important;
+  font-weight: 600;
 }
 
 .upi-id-label code {
-  color: var(--text-primary);
-  font-weight: 700;
+  color: #1e1b4b !important;
+  background: rgba(99, 102, 241, 0.14) !important;
+  padding: 2px 8px;
+  border-radius: 6px;
+  font-weight: 800;
   font-family: monospace;
 }
 
@@ -707,9 +747,9 @@
   gap: 8px;
   font-size: 0.82rem;
   font-weight: 800;
-  color: var(--text-primary);
+  color: #0f172a !important;
   padding-bottom: 8px;
-  border-bottom: 1px dashed var(--border-color);
+  border-bottom: 1px dashed #cbd5e1 !important;
   text-transform: uppercase;
   letter-spacing: 0.5px;
 }
@@ -721,9 +761,9 @@
 }
 
 .af-label {
-  font-size: 0.78rem;
+  font-size: 0.8rem;
   font-weight: 700;
-  color: var(--text-primary);
+  color: #1e293b !important;
 }
 
 .af-mandatory-tag {
@@ -744,40 +784,45 @@
 }
 
 .af-chip {
-  background: var(--bg-primary);
-  border: 1px solid var(--border-color);
-  color: var(--text-secondary);
-  padding: 5px 10px;
+  background: #ffffff !important;
+  border: 1px solid #cbd5e1 !important;
+  color: #334155 !important;
+  padding: 6px 12px;
   border-radius: 6px;
-  font-size: 0.75rem;
+  font-size: 0.76rem;
   font-weight: 700;
   cursor: pointer;
   transition: all 0.2s ease;
 }
 
 .af-chip:hover {
-  border-color: var(--primary);
-  color: var(--text-primary);
+  border-color: #4f46e5 !important;
+  color: #0f172a !important;
 }
 
 .af-chip.active {
-  background: var(--primary);
-  border-color: var(--primary);
-  color: white;
+  background: #4f46e5 !important;
+  border-color: #4f46e5 !important;
+  color: #ffffff !important;
   box-shadow: 0 2px 6px rgba(79, 70, 229, 0.25);
 }
 
 /* Standard Anti-Fraud Inputs */
 .af-input {
   width: 100%;
-  padding: 9px 12px;
-  border: 1px solid var(--border-color);
-  background: var(--bg-primary);
+  padding: 10px 12px;
+  border: 1px solid #cbd5e1 !important;
+  background: #ffffff !important;
   border-radius: 8px;
-  font-size: 0.85rem;
-  color: var(--text-primary);
+  font-size: 0.88rem;
+  color: #0f172a !important;
   outline: none;
+  font-weight: 600;
   transition: border-color 0.2s, box-shadow 0.2s;
+}
+
+.af-input::placeholder {
+  color: #94a3b8 !important;
 }
 
 .af-input:focus {

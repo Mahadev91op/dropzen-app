@@ -32,9 +32,19 @@ const SettingsSchema = new mongoose.Schema({
   usdToInrRate: {
     type: Number,
     default: 83,
+  },
+  globalMinQuantity: {
+    type: Number,
+    default: 1,
+    min: 1,
   }
 }, {
-  timestamps: true
+  timestamps: true,
+  strict: false
 });
+
+if (mongoose.models && mongoose.models.Settings) {
+  delete mongoose.models.Settings;
+}
 
 export default mongoose.models.Settings || mongoose.model('Settings', SettingsSchema);

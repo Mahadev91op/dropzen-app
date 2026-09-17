@@ -34,27 +34,35 @@ export async function PUT(request) {
       'maintenanceMode',
       'globalDiscount',
       'upiId',
-      'usdToInrRate'
+      'usdToInrRate',
+      'globalMinQuantity'
     ];
 
+    const updateData = {};
     allowedFields.forEach(field => {
       if (body[field] !== undefined) {
         if (field === 'globalDiscount' || field === 'usdToInrRate') {
-          settings[field] = Number(body[field]);
+          updateData[field] = Number(body[field]);
+        } else if (field === 'globalMinQuantity') {
+          updateData[field] = Math.max(1, parseInt(body[field]) || 1);
         } else if (field === 'announcementActive' || field === 'maintenanceMode') {
-          settings[field] = body[field] === true || body[field] === 'true';
+          updateData[field] = body[field] === true || body[field] === 'true';
         } else {
-          settings[field] = body[field];
+          updateData[field] = body[field];
         }
       }
     });
 
-    await settings.save();
+    const updatedSettings = await Settings.findOneAndUpdate(
+      {},
+      { $set: updateData },
+      { new: true, upsert: true, setDefaultsOnInsert: true }
+    ).lean();
 
     return NextResponse.json({
       success: true,
       message: 'Global configurations updated successfully.',
-      settings
+      settings: updatedSettings
     }, { status: 200 });
 
   } catch (error) {

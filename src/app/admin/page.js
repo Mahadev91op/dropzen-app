@@ -95,7 +95,8 @@ export default function AdminDashboard() {
     maintenanceMode: false,
     globalDiscount: 0,
     upiId: 'mahadevtanti191@okaxis',
-    usdToInrRate: 83
+    usdToInrRate: 83,
+    globalMinQuantity: 1
   });
 
   const [loadingData, setLoadingData] = useState(false);
@@ -496,14 +497,19 @@ export default function AdminDashboard() {
   const handleSaveSettings = async (e) => {
     e.preventDefault();
     setSubmitLoading(true);
+    const payload = {
+      ...settings,
+      globalMinQuantity: Math.max(1, parseInt(settings.globalMinQuantity) || 1),
+      globalDiscount: Math.max(0, Math.min(100, Number(settings.globalDiscount) || 0))
+    };
     try {
       const res = await fetch('/api/admin/settings', {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(settings)
+        body: JSON.stringify(payload)
       });
       const data = await res.json();
-      if (res.ok && data.success) {
+      if (res.ok && data.success && data.settings) {
         showToast('Site settings updated dynamically!');
         setSettings(data.settings);
       } else {
@@ -1779,9 +1785,6 @@ export default function AdminDashboard() {
                                   <span style={{ fontSize: '0.72rem', background: 'rgba(245, 158, 11, 0.12)', color: '#fbbf24', padding: '2px 7px', borderRadius: '4px', fontWeight: 600 }}>
                                     {card.badge || '🔥 Trending'}
                                   </span>
-                                  <span style={{ fontSize: '0.72rem', background: 'rgba(59, 130, 246, 0.1)', color: '#3b82f6', padding: '2px 7px', borderRadius: '4px', fontWeight: 700 }}>
-                                    Min: {card.minQuantity || 1} {(card.minQuantity || 1) > 1 ? 'units' : 'unit'}
-                                  </span>
                                 </div>
                                 <h4 style={{ margin: 0, fontSize: '0.96rem', fontWeight: 800, color: 'var(--text-primary)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }} title={title}>
                                   {title}
@@ -2042,6 +2045,30 @@ export default function AdminDashboard() {
                   </div>
 
                   <div className="settings-section-title" style={{ borderBottom: '1px solid var(--border-color)', paddingBottom: '10px', display: 'flex', alignItems: 'center', gap: '8px', fontWeight: 'bold', marginTop: '10px' }}>
+                    <Layers size={16} color="var(--primary)" /> Global Order Constraints
+                  </div>
+
+                  <div className="admin-form-group">
+                    <label className="admin-form-label" style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                      <span style={{ fontWeight: 700 }}>Global Minimum Order Quantity (Min Qty)</span>
+                      <span style={{ fontSize: '0.74rem', color: 'var(--text-secondary)', fontWeight: 400 }}>
+                        Sets the minimum purchase quantity across all product cards simultaneously. Customers cannot place an order for less than this amount.
+                      </span>
+                    </label>
+                    <input
+                      type="number"
+                      min="1"
+                      className="admin-form-input"
+                      value={settings.globalMinQuantity !== undefined && settings.globalMinQuantity !== null ? settings.globalMinQuantity : ''}
+                      onChange={(e) => {
+                        const val = e.target.value;
+                        handleSettingsChange('globalMinQuantity', val === '' ? '' : parseInt(val));
+                      }}
+                      required
+                    />
+                  </div>
+
+                  <div className="settings-section-title" style={{ borderBottom: '1px solid var(--border-color)', paddingBottom: '10px', display: 'flex', alignItems: 'center', gap: '8px', fontWeight: 'bold', marginTop: '10px' }}>
                     <Sliders size={16} color="var(--primary)" /> UPI Payment Settings
                   </div>
 
@@ -2176,33 +2203,16 @@ export default function AdminDashboard() {
                   </div>
                 </div>
 
-                <div className="admin-form-row">
-                  <div className="admin-form-group">
-                    <label className="admin-form-label">
-                      Minimum Order Quantity (Min Qty)
-                      <span style={{ fontSize: '0.72rem', color: '#64748b', fontWeight: 400, marginLeft: '6px' }}>(Client cannot order less)</span>
-                    </label>
-                    <input
-                      type="number"
-                      min="1"
-                      className="admin-form-input"
-                      placeholder="e.g. 1"
-                      value={cardForm.minQuantity ?? 1}
-                      onChange={(e) => setCardForm({ ...cardForm, minQuantity: Math.max(1, parseInt(e.target.value) || 1) })}
-                      required
-                    />
-                  </div>
-                  <div className="admin-form-group">
-                    <label className="admin-form-label">Total Leads Included</label>
-                    <input
-                      type="number"
-                      className="admin-form-input"
-                      placeholder="e.g. 5240"
-                      value={cardForm.recordsCount || cardForm.qty || ''}
-                      onChange={(e) => setCardForm({ ...cardForm, recordsCount: Number(e.target.value), qty: Number(e.target.value) })}
-                      required
-                    />
-                  </div>
+                <div className="admin-form-group">
+                  <label className="admin-form-label">Total Leads Included</label>
+                  <input
+                    type="number"
+                    className="admin-form-input"
+                    placeholder="e.g. 5240"
+                    value={cardForm.recordsCount || cardForm.qty || ''}
+                    onChange={(e) => setCardForm({ ...cardForm, recordsCount: Number(e.target.value), qty: Number(e.target.value) })}
+                    required
+                  />
                 </div>
 
                 <div className="admin-form-row">

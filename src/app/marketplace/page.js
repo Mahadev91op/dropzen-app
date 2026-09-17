@@ -85,15 +85,17 @@ export default function MarketplacePage() {
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, []);
 
-  const getProductQuantity = (productId, minQty = 1) => {
-    const effectiveMin = Math.max(1, Number(minQty) || 1);
+  const globalMinQty = Math.max(1, Number(dynamicSettings?.globalMinQuantity) || 1);
+
+  const getProductQuantity = (productId, minQty = globalMinQty) => {
+    const effectiveMin = Math.max(1, Number(minQty) || globalMinQty);
     const current = quantities[productId];
     if (current === undefined || current === null) return effectiveMin;
     return Math.max(effectiveMin, current);
   };
 
-  const handleQuantityChange = (productId, newQty, minQty = 1) => {
-    const effectiveMin = Math.max(1, Number(minQty) || 1);
+  const handleQuantityChange = (productId, newQty, minQty = globalMinQty) => {
+    const effectiveMin = Math.max(1, Number(minQty) || globalMinQty);
     const safeQty = Math.max(effectiveMin, Number(newQty) || effectiveMin);
     setQuantities((prev) => ({ ...prev, [productId]: safeQty }));
   };
@@ -355,7 +357,7 @@ export default function MarketplacePage() {
                     const retail = product.resellPrice || 899;
                     const estProfit = retail - wholesale;
                     const records = product.recordsCount || 5000;
-                    const minQty = Math.max(1, product.minQuantity || 1);
+                    const minQty = Math.max(1, Number(dynamicSettings?.globalMinQuantity) || 1);
                     const currentQty = getProductQuantity(product._id, minQty);
                     const totalPrice = (product.price || 999) * currentQty;
                     const originalTotalPrice = product.originalPrice ? product.originalPrice * currentQty : null;
@@ -421,10 +423,6 @@ export default function MarketplacePage() {
                             {product.title}
                           </h3>
 
-                          {product.description && (
-                            <p className="product-lead-desc">{product.description}</p>
-                          )}
-
                           {/* Records Count & Delivery Meta */}
                           <div className="lead-meta-pill-strip">
                             <span className="records-pill">
@@ -453,76 +451,57 @@ export default function MarketplacePage() {
                               <span className="margin-profit-val">+₹{estProfit}</span>
                             </div>
                           </div>
-
-                          {/* Highlight Features */}
-                          <ul className="lead-features-list">
-                            {(product.highlightFeatures && product.highlightFeatures.length > 0
-                              ? product.highlightFeatures.slice(0, 3)
-                              : [
-                                  '100% Verified Indian Mobile & WhatsApp Numbers',
-                                  'Pre-Qualified COD Buyers (Low RTO < 11.4%)',
-                                  'Clean Excel (.xlsx) Download with Customer Names & PINs',
-                                ]
-                            ).map((feat, idx) => (
-                              <li key={idx}>
-                                <CheckCircle2 size={13} className="check-icon" />
-                                <span>{feat}</span>
-                              </li>
-                            ))}
-                          </ul>
                         </div>
 
                         {/* Card Footer Actions */}
                         <div className="product-lead-footer">
-                          <button
-                            type="button"
-                            className="btn-preview-sample"
-                            onClick={() => setPreviewProduct(product)}
-                            title="Preview sample Excel leads for this product"
-                          >
-                            <Eye size={14} /> Preview Sample Leads
-                          </button>
+                          {/* Compact Top Row: Quantity Selector + Preview Leads Button */}
+                          <div className="card-footer-top-row">
+                            <div className="card-qty-compact-group">
+                              <span className="card-qty-mini-label">Qty{minQty > 1 ? ` (Min ${minQty})` : ''}:</span>
+                              <div className="card-qty-control">
+                                <button
+                                  type="button"
+                                  className="qty-btn qty-btn-minus"
+                                  disabled={currentQty <= minQty}
+                                  onClick={() => handleQuantityChange(product._id, currentQty - 1, minQty)}
+                                  aria-label="Decrease quantity"
+                                >
+                                  <Minus size={13} />
+                                </button>
+                                <input
+                                  type="number"
+                                  min={minQty}
+                                  value={currentQty}
+                                  onChange={(e) => {
+                                    const val = parseInt(e.target.value);
+                                    handleQuantityChange(product._id, isNaN(val) ? minQty : Math.max(minQty, val), minQty);
+                                  }}
+                                  className="qty-number-input"
+                                  aria-label="Quantity"
+                                />
+                                <button
+                                  type="button"
+                                  className="qty-btn qty-btn-plus"
+                                  onClick={() => handleQuantityChange(product._id, currentQty + 1, minQty)}
+                                  aria-label="Increase quantity"
+                                >
+                                  <Plus size={13} />
+                                </button>
+                              </div>
+                            </div>
 
-                          {/* Quantity Selector */}
-                          <div className="card-qty-selector-wrap">
-                            <div className="card-qty-label-group">
-                              <span className="card-qty-label">Quantity</span>
-                              <span className="card-min-qty-hint">
-                                Min: <strong>{minQty}</strong> {minQty > 1 ? 'units' : 'unit'}
-                              </span>
-                            </div>
-                            <div className="card-qty-control">
-                              <button
-                                type="button"
-                                className="qty-btn qty-btn-minus"
-                                disabled={currentQty <= minQty}
-                                onClick={() => handleQuantityChange(product._id, currentQty - 1, minQty)}
-                                aria-label="Decrease quantity"
-                              >
-                                <Minus size={14} />
-                              </button>
-                              <input
-                                type="number"
-                                min={minQty}
-                                value={currentQty}
-                                onChange={(e) => {
-                                  const val = parseInt(e.target.value);
-                                  handleQuantityChange(product._id, isNaN(val) ? minQty : Math.max(minQty, val), minQty);
-                                }}
-                                className="qty-number-input"
-                                aria-label="Quantity"
-                              />
-                              <button
-                                type="button"
-                                className="qty-btn qty-btn-plus"
-                                onClick={() => handleQuantityChange(product._id, currentQty + 1, minQty)}
-                                aria-label="Increase quantity"
-                              >
-                                <Plus size={14} />
-                              </button>
-                            </div>
+                            <button
+                              type="button"
+                              className="btn-preview-sample-compact"
+                              onClick={() => setPreviewProduct(product)}
+                              title="Preview sample Excel leads for this product"
+                            >
+                              <Eye size={13} /> Preview Leads
+                            </button>
                           </div>
 
+                          {/* Pricing and Buy Row */}
                           <div className="pricing-and-buy-row">
                             <div className="lead-pricing-block">
                               <div className="lead-price-now">₹{totalPrice.toLocaleString()}</div>
@@ -542,8 +521,8 @@ export default function MarketplacePage() {
                               className="btn-buy-leads"
                               onClick={() => handleBuyProduct(product, currentQty)}
                             >
-                              <span>Buy {currentQty > 1 ? `(${currentQty})` : ''}</span>
-                              <ArrowRight size={15} />
+                              <span>Buy Leads</span>
+                              <ArrowRight size={14} />
                             </button>
                           </div>
                         </div>

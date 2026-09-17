@@ -12,11 +12,13 @@ export async function GET() {
     // Seed default settings if none exist
     if (!settings) {
       const created = await Settings.create({
-        upiId: 'mahadevtanti191@okaxis'
+        upiId: 'mahadevtanti191@okaxis',
+        globalMinQuantity: 1
       });
       settings = created.toObject();
-    } else if (!settings.upiId) {
-      settings.upiId = 'mahadevtanti191@okaxis';
+    } else {
+      if (!settings.upiId) settings.upiId = 'mahadevtanti191@okaxis';
+      if (!settings.globalMinQuantity) settings.globalMinQuantity = 1;
     }
 
     return NextResponse.json({ success: true, settings }, { 
